@@ -156,19 +156,6 @@ function findPinnedTopIndex(items) {
   return findGroupTopIndex(items, true)
 }
 
-function formatTimestamp(value) {
-  const ms = toMillis(value)
-
-  if (!ms) {
-    return ''
-  }
-
-  return new Intl.DateTimeFormat('ja-JP', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(ms)
-}
-
 function getErrorMessage(error) {
   const message = typeof error?.message === 'string' ? error.message : '予期しないエラーが発生しました。'
 
@@ -1322,7 +1309,6 @@ function App() {
                 )
                 const swipeHint =
                   swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
-                const updatedLabel = formatTimestamp(note.updatedAt)
                 const showActions = isEditing || !isTouchLayout
                 const itemStyle = {}
                 if (swipeHint) {
@@ -1414,7 +1400,6 @@ function App() {
                     )}
 
                     <div className="note-footer">
-                      <small>{updatedLabel ? `更新: ${updatedLabel}` : ''}</small>
                       {showActions ? (
                         <div className="actions">
                           {isEditing ? (

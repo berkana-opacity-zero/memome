@@ -132,7 +132,7 @@ body.is-note-dragging {
 .composer-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.6rem;
+  gap: 0.7rem;
   align-items: center;
 }
 
@@ -383,14 +383,10 @@ button:disabled {
 
 .note-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1rem;
   align-items: flex-end;
   flex-wrap: wrap;
-}
-
-.note-footer small {
-  color: #475569;
 }
 
 .pin-icon-btn {
@@ -425,6 +421,7 @@ button:disabled {
   gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+  margin-top: 0.7rem;
 }
 
 .danger {
@@ -460,7 +457,7 @@ button:disabled {
 
 :root[data-theme='dark'] .composer,
 :root[data-theme='dark'] .note-item {
-  background: rgba(30, 41, 59, 0.78);
+  background: rgba(30, 41, 59, 1);
   border-color: rgba(148, 163, 184, 0.3);
   box-shadow: 0 20px 48px -34px rgba(2, 6, 23, 0.82);
 }
@@ -478,7 +475,6 @@ button:disabled {
 
 :root[data-theme='dark'] .app-header p,
 :root[data-theme='dark'] .notes-title,
-:root[data-theme='dark'] .note-footer small,
 :root[data-theme='dark'] .empty-state,
 :root[data-theme='dark'] .hint {
   color: #cbd5e1;
@@ -616,7 +612,7 @@ button:disabled {
 @media (max-width: 680px) and (hover: none),
 (max-width: 680px) and (pointer: coarse) {
   .app-shell {
-    padding: 0.35rem 1rem 3rem;
+    padding: 0.43rem 1rem 3rem;
   }
 
   .app-header {
@@ -713,6 +709,8 @@ button:disabled {
   }
 
   .note-row p {
+    display: flex;
+    align-items: center;
     min-height: 2.35rem;
   }
 
