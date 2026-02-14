@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth'
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 const requiredKeys = [
   'VITE_FIREBASE_API_KEY',
@@ -37,7 +42,17 @@ let db = null
 if (!firebaseConfigError) {
   const app = initializeApp(firebaseConfig)
   auth = getAuth(app)
-  db = getFirestore(app)
+  void setPersistence(auth, browserLocalPersistence).catch(() => {})
+
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    })
+  } catch {
+    db = getFirestore(app)
+  }
 }
 
 export { auth, db }

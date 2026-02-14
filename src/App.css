@@ -11,6 +11,21 @@
   margin: 0;
 }
 
+.loading-screen {
+  min-height: 55vh;
+  display: grid;
+  place-items: center;
+}
+
+.loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(37, 99, 235, 0.18);
+  border-top-color: #2563eb;
+  animation: spin 0.82s linear infinite;
+}
+
 .setup-card,
 .signin-card,
 .composer,
@@ -57,7 +72,7 @@
   padding: 1rem;
   display: grid;
   gap: 0.65rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.35rem;
   animation: rise 320ms ease-out;
 }
 
@@ -66,21 +81,35 @@
   font-size: 0.95rem;
 }
 
-textarea {
+.composer-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.composer textarea,
+.note-edit-input {
   width: 100%;
   border: 1px solid #d3dde8;
   border-radius: 12px;
-  padding: 0.8rem;
+  padding: 0.72rem 0.8rem;
   font: inherit;
-  resize: vertical;
   background: #ffffff;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
-textarea:focus {
+.composer textarea:focus,
+.note-edit-input:focus {
   outline: none;
   border-color: #1d7f91;
   box-shadow: 0 0 0 3px rgba(29, 127, 145, 0.2);
+}
+
+.composer textarea,
+.note-edit-input {
+  resize: vertical;
+  min-height: 3rem;
 }
 
 button {
@@ -105,6 +134,22 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.btn-login {
+  background: linear-gradient(120deg, #2563eb, #3b82f6);
+}
+
+.btn-logout {
+  background: linear-gradient(120deg, #6b7280, #9ca3af);
+}
+
+.btn-edit {
+  background: linear-gradient(120deg, #2563eb, #3b82f6);
+}
+
+.btn-add {
+  background: linear-gradient(120deg, #15803d, #22c55e);
+}
+
 .notes-section {
   display: grid;
   gap: 0.9rem;
@@ -117,6 +162,10 @@ button:disabled {
   color: #334155;
 }
 
+.notes-title h2 {
+  font-size: 1.25rem;
+}
+
 .notes-title span {
   font-size: 0.85rem;
 }
@@ -125,28 +174,76 @@ button:disabled {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.8rem;
+  gap: 1rem;
   list-style: none;
 }
 
 .note-item {
+  position: relative;
   padding: 1rem;
   display: grid;
   gap: 0.85rem;
   animation: rise 260ms ease-out;
+  cursor: grab;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
-.note-item p {
+.note-item--pinned {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.note-item--dragging {
+  opacity: 0.62;
+  transform: scale(0.99);
+}
+
+.note-item--insert-before::before,
+.note-item--insert-after::after {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  border-top: 3px solid #f59e0b;
+  pointer-events: none;
+}
+
+.note-item--insert-before::before {
+  top: -0.45rem;
+}
+
+.note-item--insert-after::after {
+  bottom: -0.45rem;
+}
+
+.note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.note-row p {
+  margin: 0;
+  flex: 1;
+  line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  line-height: 1.45;
+}
+
+.note-row a {
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.note-row a:hover {
+  color: #1d7f91;
 }
 
 .note-footer {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  align-items: center;
+  align-items: flex-end;
   flex-wrap: wrap;
 }
 
@@ -154,9 +251,38 @@ button:disabled {
   color: #475569;
 }
 
+.pin-icon-btn {
+  margin-left: auto;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  background: #d1d5db;
+  color: #374151;
+  border: 1px solid #cbd5e1;
+}
+
+.pin-icon-btn:hover:enabled {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.pin-icon-btn.is-active {
+  background: #f59e0b;
+  border-color: #d97706;
+  color: #ffffff;
+}
+
 .actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .danger {
@@ -165,6 +291,7 @@ button:disabled {
 
 .hint {
   color: #475569;
+  font-size: 0.9rem;
 }
 
 .error {
@@ -174,10 +301,14 @@ button:disabled {
 }
 
 .empty-state {
-  padding: 1rem;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.64);
+  padding: 0;
   color: #475569;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes rise {
@@ -197,8 +328,14 @@ button:disabled {
   }
 
   .app-header {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .app-header .btn-logout {
+    justify-self: end;
+    align-self: start;
   }
 
   .actions {
@@ -207,5 +344,9 @@ button:disabled {
 
   .actions button {
     flex: 1;
+  }
+
+  .composer-row {
+    grid-template-columns: 1fr;
   }
 }
