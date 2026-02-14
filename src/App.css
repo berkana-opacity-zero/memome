@@ -64,7 +64,7 @@ body.is-note-dragging {
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.6rem;
   animation: rise 280ms ease-out;
 }
 
@@ -598,16 +598,6 @@ button:disabled {
 
 @media (max-width: 680px) and (hover: none),
 (max-width: 680px) and (pointer: coarse) {
-  .app-shell {
-    padding: 1rem 0 2rem;
-  }
-
-  .app-header,
-  .notes-title {
-    padding-left: 0.9rem;
-    padding-right: 0.9rem;
-  }
-
   .composer {
     margin-bottom: 0.75rem;
   }
@@ -626,7 +616,7 @@ button:disabled {
 @media (max-width: 680px) and (hover: none),
 (max-width: 680px) and (pointer: coarse) {
   .app-shell {
-    padding: 2.25rem 1rem 3rem;
+    padding: 0.35rem 1rem 3rem;
   }
 
   .app-header {
@@ -637,16 +627,37 @@ button:disabled {
   }
 
   .header-brand {
+    order: 2;
     justify-content: flex-start;
   }
 
   .header-user-row {
-    justify-content: space-between;
+    order: 1;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.05rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.4);
   }
 
   .header-user {
+    gap: 0.3rem;
     min-width: 0;
-    flex: 1;
+    flex: 0 1 auto;
+  }
+
+  .header-user p {
+    font-size: 0.82rem;
+  }
+
+  .header-avatar {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+
+  .header-user-row .btn-logout {
+    font-size: 0.78rem;
+    padding: 0.45rem 0.78rem;
   }
 
   .actions {
