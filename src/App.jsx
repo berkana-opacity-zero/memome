@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -24,6 +24,16 @@ const provider = new GoogleAuthProvider()
 const URL_SPLIT_PATTERN = /(https?:\/\/[^\s]+)/gi
 const STRICT_URL_PATTERN = /^https?:\/\/[^\s]+$/i
 const THEME_STORAGE_KEY = 'memome-theme'
+const TOUCH_LAYOUT_QUERY = '(hover: none) and (pointer: coarse)'
+const SWIPE_TRIGGER_PX = 72
+const SWIPE_DIRECTION_RATIO = 1.25
+const SWIPE_MOVE_START_PX = 14
+const LONG_PRESS_DRAG_MS = 360
+const TOUCH_DRAG_MOVE_THRESHOLD_PX = 10
+const TOUCH_DRAG_ACTIVATE_MOVE_PX = 8
+const INSERT_GAP_PX = 72
+const TRANSPARENT_DRAG_PIXEL =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
 function getInitialTheme() {
   if (typeof window === 'undefined') {
@@ -36,6 +46,14 @@ function getInitialTheme() {
   }
 
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+function getInitialTouchLayout() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.matchMedia(TOUCH_LAYOUT_QUERY).matches
 }
 
 function toMillis(value) {
@@ -112,13 +130,13 @@ function findNextSortIndex(items, pinned) {
   return maxIndex + 1
 }
 
-function findPinnedTopIndex(items) {
-  const pinnedNotes = items.filter((note) => Boolean(note.pinned))
-  if (pinnedNotes.length === 0) {
+function findGroupTopIndex(items, pinned) {
+  const sameGroup = items.filter((note) => Boolean(note.pinned) === Boolean(pinned))
+  if (sameGroup.length === 0) {
     return 0
   }
 
-  const minIndex = pinnedNotes.reduce((minValue, note) => {
+  const minIndex = sameGroup.reduce((minValue, note) => {
     const noteIndex = getSortIndex(note)
     if (noteIndex === null) {
       return minValue
@@ -127,6 +145,10 @@ function findPinnedTopIndex(items) {
   }, 0)
 
   return minIndex - 1
+}
+
+function findPinnedTopIndex(items) {
+  return findGroupTopIndex(items, true)
 }
 
 function formatTimestamp(value) {
@@ -157,13 +179,40 @@ function getErrorMessage(error) {
 }
 
 function renderLinkedText(text) {
-  return text.split(URL_SPLIT_PATTERN).map((part, index) => {
+  const parts = text.split(URL_SPLIT_PATTERN)
+
+  return parts.map((part, index) => {
     if (STRICT_URL_PATTERN.test(part)) {
       return (
-        <a key={`url-${index}`} href={part} target="_blank" rel="noopener noreferrer">
-          {part}
-        </a>
+        <span className="note-url-item" key={`url-${index}`}>
+          <span className="note-url-text">{part}</span>
+          <a
+            className="note-link-icon"
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`リンクを開く: ${part}`}
+            title="リンクを開く"
+          >
+            🔗
+          </a>
+        </span>
       )
+    }
+
+    if (!part) {
+      return null
+    }
+
+    const prevPart = parts[index - 1] ?? ''
+    const nextPart = parts[index + 1] ?? ''
+    const isUrlSeparator =
+      STRICT_URL_PATTERN.test(prevPart) &&
+      STRICT_URL_PATTERN.test(nextPart) &&
+      part.trim() === ''
+
+    if (isUrlSeparator) {
+      return null
     }
 
     return <span key={`txt-${index}`}>{part}</span>
@@ -184,6 +233,7 @@ function isSubmitShortcut(event) {
 
 function App() {
   const [theme, setTheme] = useState(getInitialTheme)
+  const [isTouchLayout, setIsTouchLayout] = useState(getInitialTouchLayout)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(!firebaseConfigError)
   const [notesLoading, setNotesLoading] = useState(false)
@@ -193,10 +243,26 @@ function App() {
   const [editId, setEditId] = useState('')
   const [editBody, setEditBody] = useState('')
   const [dragId, setDragId] = useState('')
+  const [touchDragId, setTouchDragId] = useState('')
+  const [dragMovedId, setDragMovedId] = useState('')
+  const [dragFollower, setDragFollower] = useState(null)
+  const [insertGapPx, setInsertGapPx] = useState(INSERT_GAP_PX)
   const [dropIndicator, setDropIndicator] = useState(null)
+  const [swipePreview, setSwipePreview] = useState({ noteId: '', direction: '', progress: 0 })
   const [errorMessage, setErrorMessage] = useState('')
   const draftInputRef = useRef(null)
   const dragIdRef = useRef('')
+  const longPressTimerRef = useRef(null)
+  const transparentDragImageRef = useRef(null)
+  const swipeRef = useRef({
+    noteId: '',
+    startX: 0,
+    startY: 0,
+    itemLeft: 0,
+    itemTop: 0,
+    itemWidth: 0,
+    itemHeight: 0,
+  })
   const orderedNotes = useMemo(() => sortNotes(notes), [notes])
   const noteGroupMetaById = useMemo(() => {
     const byId = new Map()
@@ -220,6 +286,45 @@ function App() {
     document.documentElement.dataset.theme = theme
     window.localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    const mediaQuery = window.matchMedia(TOUCH_LAYOUT_QUERY)
+    const syncTouchLayout = (event) => {
+      setIsTouchLayout(event.matches)
+    }
+
+    setIsTouchLayout(mediaQuery.matches)
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncTouchLayout)
+      return () => mediaQuery.removeEventListener('change', syncTouchLayout)
+    }
+
+    mediaQuery.addListener(syncTouchLayout)
+    return () => mediaQuery.removeListener(syncTouchLayout)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof Image === 'undefined') {
+      return
+    }
+
+    const image = new Image()
+    image.src = TRANSPARENT_DRAG_PIXEL
+    transparentDragImageRef.current = image
+  }, [])
 
   useEffect(() => {
     if (!auth) {
@@ -316,7 +421,7 @@ function App() {
       return
     }
 
-    const nextSortIndex = findNextSortIndex(orderedNotes, false)
+    const nextSortIndex = findGroupTopIndex(orderedNotes, false)
 
     setErrorMessage('')
     setDraft('')
@@ -392,10 +497,64 @@ function App() {
     }
   }
 
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
   const clearDragState = () => {
+    clearLongPressTimer()
     dragIdRef.current = ''
     setDragId('')
+    setTouchDragId('')
+    setDragMovedId('')
+    setDragFollower(null)
+    setInsertGapPx(INSERT_GAP_PX)
     setDropIndicator(null)
+  }
+
+  const clearSwipeState = () => {
+    swipeRef.current = {
+      noteId: '',
+      startX: 0,
+      startY: 0,
+      itemLeft: 0,
+      itemTop: 0,
+      itemWidth: 0,
+      itemHeight: 0,
+    }
+    setSwipePreview((current) =>
+      current.noteId ? { noteId: '', direction: '', progress: 0 } : current,
+    )
+  }
+
+  const updateDragFollowerPosition = (noteId, clientX, clientY) => {
+    if (!noteId) {
+      return
+    }
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+      return
+    }
+    if (clientX <= 0 && clientY <= 0) {
+      return
+    }
+
+    setDragFollower((current) => {
+      if (!current || current.noteId !== noteId) {
+        return current
+      }
+      if (Math.abs(current.currentX - clientX) < 0.5 && Math.abs(current.currentY - clientY) < 0.5) {
+        return current
+      }
+
+      return {
+        ...current,
+        currentX: clientX,
+        currentY: clientY,
+      }
+    })
   }
 
   const handleTogglePin = async (note) => {
@@ -427,39 +586,129 @@ function App() {
       return
     }
 
+    const targetRect = event.currentTarget.getBoundingClientRect()
+    const startX =
+      Number.isFinite(event.clientX) && event.clientX > 0
+        ? event.clientX
+        : targetRect.left + targetRect.width / 2
+    const startY =
+      Number.isFinite(event.clientY) && event.clientY > 0
+        ? event.clientY
+        : targetRect.top + targetRect.height / 2
+
     setErrorMessage('')
     dragIdRef.current = note.id
     setDragId(note.id)
+    setDragMovedId('')
+    setInsertGapPx(Math.max(INSERT_GAP_PX, Math.round(targetRect.height)))
+    setDragFollower({
+      noteId: note.id,
+      startX,
+      startY,
+      currentX: startX,
+      currentY: startY,
+      itemLeft: targetRect.left,
+      itemTop: targetRect.top,
+      itemWidth: targetRect.width,
+    })
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', note.id)
+    if (transparentDragImageRef.current) {
+      event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
+    }
   }
 
-  const handleDragOver = (note, event) => {
-    const activeDragId = dragIdRef.current || dragId || event.dataTransfer.getData('text/plain')
-    if (!activeDragId || activeDragId === note.id) {
+  const handleDrag = (note, event) => {
+    const activeDragId = dragIdRef.current || dragId
+    if (activeDragId !== note.id) {
       return
+    }
+
+    updateDragFollowerPosition(note.id, event.clientX, event.clientY)
+  }
+
+  const handleTouchStart = (note, event) => {
+    if (!isTouchLayout || editId || isInteractiveDragTarget(event.target)) {
+      return
+    }
+    if (event.touches.length !== 1) {
+      return
+    }
+
+    const touch = event.touches[0]
+    const targetRect = event.currentTarget.getBoundingClientRect()
+    swipeRef.current = {
+      noteId: note.id,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      itemLeft: targetRect.left,
+      itemTop: targetRect.top,
+      itemWidth: targetRect.width,
+      itemHeight: targetRect.height,
+    }
+
+    clearLongPressTimer()
+    longPressTimerRef.current = window.setTimeout(() => {
+      if (swipeRef.current.noteId !== note.id || editId) {
+        return
+      }
+      const dragStart = swipeRef.current
+      dragIdRef.current = note.id
+      setDragId(note.id)
+      setTouchDragId(note.id)
+      setDragMovedId('')
+      setInsertGapPx(Math.max(INSERT_GAP_PX, Math.round(dragStart.itemHeight)))
+      setDragFollower({
+        noteId: note.id,
+        startX: dragStart.startX,
+        startY: dragStart.startY,
+        currentX: dragStart.startX,
+        currentY: dragStart.startY,
+        itemLeft: dragStart.itemLeft,
+        itemTop: dragStart.itemTop,
+        itemWidth: dragStart.itemWidth,
+      })
+      setSwipePreview({ noteId: '', direction: '', progress: 0 })
+    }, LONG_PRESS_DRAG_MS)
+  }
+
+  const setInsertIndicator = (activeDragId, targetNote, clientY, targetRect) => {
+    if (!activeDragId || !targetNote || activeDragId === targetNote.id) {
+      return false
     }
 
     const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
     if (!draggingNote) {
-      return
+      return false
     }
 
-    const targetPinned = Boolean(note.pinned)
+    const targetPinned = Boolean(targetNote.pinned)
     if (Boolean(draggingNote.pinned) !== targetPinned) {
-      return
+      return false
     }
 
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
     const currentGroup = orderedNotes.filter((item) => Boolean(item.pinned) === targetPinned)
-    const targetIndex = currentGroup.findIndex((item) => item.id === note.id)
+    const targetIndex = currentGroup.findIndex((item) => item.id === targetNote.id)
     if (targetIndex < 0) {
-      return
+      return false
     }
 
-    const rect = event.currentTarget.getBoundingClientRect()
-    const shouldInsertAfter = event.clientY > rect.top + rect.height / 2
+    const ratio = (clientY - targetRect.top) / Math.max(targetRect.height, 1)
+    let shouldInsertAfter = ratio >= 0.5
+
+    if (dropIndicator && dropIndicator.pinned === targetPinned) {
+      const isAroundSameTarget =
+        dropIndicator.index === targetIndex || dropIndicator.index === targetIndex + 1
+
+      if (isAroundSameTarget) {
+        if (dropIndicator.index === targetIndex) {
+          shouldInsertAfter = ratio >= 0.68
+        } else {
+          shouldInsertAfter = ratio > 0.32
+        }
+      }
+    }
+
     const nextDropIndex = targetIndex + (shouldInsertAfter ? 1 : 0)
 
     setDropIndicator((current) => {
@@ -468,51 +717,179 @@ function App() {
       }
       return { pinned: targetPinned, index: nextDropIndex }
     })
+
+    return true
   }
 
-  const handleDrop = async (targetNote, event) => {
+  const handleTouchMove = (note, event) => {
+    if (!isTouchLayout || editId) {
+      return
+    }
+
+    const swipeState = swipeRef.current
+    if (swipeState.noteId !== note.id || event.touches.length !== 1) {
+      return
+    }
+
+    const touch = event.touches[0]
+    const deltaX = touch.clientX - swipeState.startX
+    const deltaY = touch.clientY - swipeState.startY
+    const absDeltaX = Math.abs(deltaX)
+    const absDeltaY = Math.abs(deltaY)
+
+    const activeTouchDragId = touchDragId || dragIdRef.current
+    if (activeTouchDragId && swipeState.noteId === activeTouchDragId) {
+      event.preventDefault()
+      updateDragFollowerPosition(activeTouchDragId, touch.clientX, touch.clientY)
+
+      const moveDistance = Math.hypot(deltaX, deltaY)
+      const hasActivatedDragMove =
+        dragMovedId === activeTouchDragId || moveDistance >= TOUCH_DRAG_ACTIVATE_MOVE_PX
+
+      if (!hasActivatedDragMove) {
+        setDropIndicator(null)
+        return
+      }
+
+      const targetElement = document.elementFromPoint(touch.clientX, touch.clientY)
+      const targetItem = targetElement?.closest?.('li.note-item[data-note-id]')
+      if (!targetItem) {
+        return
+      }
+
+      const targetId = targetItem.getAttribute('data-note-id')
+      if (!targetId) {
+        return
+      }
+
+      const targetNote = orderedNotes.find((item) => item.id === targetId)
+      if (!targetNote) {
+        return
+      }
+
+      const didSetIndicator = setInsertIndicator(
+        activeTouchDragId,
+        targetNote,
+        touch.clientY,
+        targetItem.getBoundingClientRect(),
+      )
+      if (!didSetIndicator) {
+        return
+      }
+      if (dragMovedId !== activeTouchDragId) {
+        setDragMovedId(activeTouchDragId)
+      }
+      return
+    }
+
+    if (absDeltaX > TOUCH_DRAG_MOVE_THRESHOLD_PX || absDeltaY > TOUCH_DRAG_MOVE_THRESHOLD_PX) {
+      clearLongPressTimer()
+    }
+
+    if (
+      absDeltaX < SWIPE_MOVE_START_PX ||
+      absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO
+    ) {
+      setSwipePreview((current) =>
+        current.noteId === note.id ? { noteId: '', direction: '', progress: 0 } : current,
+      )
+      return
+    }
+
     event.preventDefault()
 
-    const activeDragId = dragIdRef.current || dragId || event.dataTransfer.getData('text/plain')
+    const direction = deltaX > 0 ? 'edit' : 'delete'
+    const progress = Math.min(absDeltaX / (SWIPE_TRIGGER_PX * 1.2), 1)
 
-    if (!db || !user || !activeDragId || activeDragId === targetNote.id) {
+    setSwipePreview((current) => {
+      if (
+        current.noteId === note.id &&
+        current.direction === direction &&
+        Math.abs(current.progress - progress) < 0.02
+      ) {
+        return current
+      }
+      return { noteId: note.id, direction, progress }
+    })
+  }
+
+  const handleTouchEnd = (note, event) => {
+    clearLongPressTimer()
+
+    if (!isTouchLayout || editId) {
       clearDragState()
+      clearSwipeState()
       return
     }
 
-    const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
-    if (!draggingNote) {
+    const activeTouchDragId = touchDragId || dragIdRef.current
+    if (activeTouchDragId) {
+      const draggingNote = orderedNotes.find((item) => item.id === activeTouchDragId)
+      if (draggingNote) {
+        let insertIndex = -1
+        if (dropIndicator && dropIndicator.pinned === Boolean(draggingNote.pinned)) {
+          insertIndex = dropIndicator.index
+        } else {
+          const currentGroup = orderedNotes.filter(
+            (item) => Boolean(item.pinned) === Boolean(draggingNote.pinned),
+          )
+          insertIndex = currentGroup.findIndex((item) => item.id === activeTouchDragId)
+        }
+
+        if (insertIndex >= 0) {
+          void reorderWithinGroup(activeTouchDragId, Boolean(draggingNote.pinned), insertIndex)
+        }
+      }
+
       clearDragState()
+      clearSwipeState()
       return
     }
 
-    const targetPinned = Boolean(targetNote.pinned)
-    if (Boolean(draggingNote.pinned) !== targetPinned) {
-      setErrorMessage('ピン留め中のメモと通常メモは別グループで並び替えてください。')
-      clearDragState()
+    const swipeState = swipeRef.current
+    if (swipeState.noteId !== note.id) {
+      clearSwipeState()
+      return
+    }
+
+    const touch = event.changedTouches[0]
+    clearSwipeState()
+
+    if (!touch) {
+      return
+    }
+
+    const deltaX = touch.clientX - swipeState.startX
+    const deltaY = touch.clientY - swipeState.startY
+    const absDeltaX = Math.abs(deltaX)
+    const absDeltaY = Math.abs(deltaY)
+
+    if (absDeltaX < SWIPE_TRIGGER_PX || absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO) {
+      return
+    }
+
+    if (deltaX > 0) {
+      startEdit(note)
+      return
+    }
+
+    void handleDelete(note.id)
+  }
+
+  const reorderWithinGroup = async (activeDragId, targetPinned, insertIndex) => {
+    if (!db || !user || !activeDragId) {
       return
     }
 
     const currentGroup = orderedNotes.filter((item) => Boolean(item.pinned) === targetPinned)
     const fromIndex = currentGroup.findIndex((item) => item.id === activeDragId)
     if (fromIndex < 0) {
-      clearDragState()
       return
     }
 
-    let insertIndex = currentGroup.findIndex((item) => item.id === targetNote.id)
-    if (dropIndicator && dropIndicator.pinned === targetPinned) {
-      insertIndex = dropIndicator.index
-    }
-    if (insertIndex < 0) {
-      clearDragState()
-      return
-    }
-    insertIndex = Math.max(0, Math.min(insertIndex, currentGroup.length))
-
-    const toIndex = insertIndex > fromIndex ? insertIndex - 1 : insertIndex
+    const safeInsertIndex = Math.max(0, Math.min(insertIndex, currentGroup.length))
+    const toIndex = safeInsertIndex > fromIndex ? safeInsertIndex - 1 : safeInsertIndex
     if (fromIndex === toIndex) {
-      clearDragState()
       return
     }
 
@@ -526,10 +903,10 @@ function App() {
       const batch = writeBatch(db)
       let updateCount = 0
 
-      reordered.forEach((note, index) => {
-        const noteIndex = getSortIndex(note)
+      reordered.forEach((item, index) => {
+        const noteIndex = getSortIndex(item)
         if (noteIndex !== index) {
-          batch.update(doc(db, 'notes', note.id), {
+          batch.update(doc(db, 'notes', item.id), {
             uid: user.uid,
             sortIndex: index,
           })
@@ -542,9 +919,123 @@ function App() {
       }
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
-    } finally {
-      clearDragState()
     }
+  }
+
+  const handleDragOver = (note, event) => {
+    const activeDragId = dragIdRef.current || dragId || event.dataTransfer.getData('text/plain')
+    updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
+    if (!activeDragId || activeDragId === note.id) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    const didSetIndicator = setInsertIndicator(
+      activeDragId,
+      note,
+      event.clientY,
+      event.currentTarget.getBoundingClientRect(),
+    )
+    if (!didSetIndicator) {
+      return
+    }
+    if (dragMovedId !== activeDragId) {
+      setDragMovedId(activeDragId)
+    }
+  }
+
+  const handleDropSpacerOver = (event) => {
+    const activeDragId = dragIdRef.current || dragId || event.dataTransfer.getData('text/plain')
+    updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
+    if (!activeDragId || !dropIndicator) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    if (dragMovedId !== activeDragId) {
+      setDragMovedId(activeDragId)
+    }
+  }
+
+  const handleDropByIndicator = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const activeDragId = dragIdRef.current || dragId || event.dataTransfer.getData('text/plain')
+    const indicatorSnapshot = dropIndicator
+    clearDragState()
+    if (!activeDragId) {
+      return
+    }
+
+    if (!indicatorSnapshot) {
+      return
+    }
+
+    const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
+    if (!draggingNote) {
+      return
+    }
+
+    if (indicatorSnapshot.pinned !== Boolean(draggingNote.pinned)) {
+      return
+    }
+
+    await reorderWithinGroup(activeDragId, Boolean(draggingNote.pinned), indicatorSnapshot.index)
+  }
+
+  const handleDrop = async (targetNote, event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const activeDragId = dragIdRef.current || dragId || event.dataTransfer.getData('text/plain')
+    const indicatorSnapshot = dropIndicator
+    clearDragState()
+
+    if (!db || !user || !activeDragId) {
+      return
+    }
+
+    if (indicatorSnapshot) {
+      const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
+      if (draggingNote && indicatorSnapshot.pinned === Boolean(draggingNote.pinned)) {
+        await reorderWithinGroup(
+          activeDragId,
+          Boolean(draggingNote.pinned),
+          indicatorSnapshot.index,
+        )
+        return
+      }
+    }
+
+    if (activeDragId === targetNote.id) {
+      return
+    }
+
+    const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
+    if (!draggingNote) {
+      clearDragState()
+      return
+    }
+
+    const targetPinned = Boolean(targetNote.pinned)
+    if (Boolean(draggingNote.pinned) !== targetPinned) {
+      setErrorMessage('ピン留め中のメモと通常メモは別グループで並び替えてください。')
+      return
+    }
+
+    const currentGroup = orderedNotes.filter((item) => Boolean(item.pinned) === targetPinned)
+    let insertIndex = currentGroup.findIndex((item) => item.id === targetNote.id)
+    if (dropIndicator && dropIndicator.pinned === targetPinned) {
+      insertIndex = dropIndicator.index
+    }
+    if (insertIndex < 0) {
+      return
+    }
+
+    await reorderWithinGroup(activeDragId, targetPinned, insertIndex)
   }
 
   const handleEditKeyDown = (event, noteId) => {
@@ -584,6 +1075,7 @@ function App() {
       if (dragId === id) {
         clearDragState()
       }
+      clearSwipeState()
     } catch (error) {
       setErrorMessage(getErrorMessage(error))
     }
@@ -673,10 +1165,14 @@ function App() {
         {notes.length === 0 && !notesLoading ? (
           <p className="empty-state">メモがありません</p>
         ) : (
-          <ul className="notes-list">
+          <ul className="notes-list" style={{ '--insert-gap': `${insertGapPx}px` }}>
             {orderedNotes.map((note) => {
               const isEditing = editId === note.id
               const isDragging = dragId === note.id
+              const isTouchDragging = touchDragId === note.id
+              const dragFollowState =
+                dragFollower && dragFollower.noteId === note.id ? dragFollower : null
+              const isDragFollowing = Boolean(dragFollowState && dragMovedId === note.id)
               const noteGroupMeta = noteGroupMetaById.get(note.id)
               const isInsertBefore = Boolean(
                 dropIndicator &&
@@ -693,78 +1189,139 @@ function App() {
                 dropIndicator.index === noteGroupMeta.size &&
                 dragId !== note.id,
               )
+              const swipeHint =
+                swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
               const updatedLabel = formatTimestamp(note.updatedAt)
+              const showActions = isEditing || !isTouchLayout
+              const itemStyle = {}
+              if (swipeHint) {
+                itemStyle['--swipe-progress'] = swipeHint.progress
+              }
+              if (dragFollowState) {
+                itemStyle['--drag-dx'] = `${Math.round(dragFollowState.currentX - dragFollowState.startX)}px`
+                itemStyle['--drag-dy'] = `${Math.round(dragFollowState.currentY - dragFollowState.startY)}px`
+                itemStyle['--drag-left'] = `${Math.round(dragFollowState.itemLeft)}px`
+                itemStyle['--drag-top'] = `${Math.round(dragFollowState.itemTop)}px`
+                itemStyle['--drag-width'] = `${Math.round(dragFollowState.itemWidth)}px`
+              }
 
               return (
-                <li
-                  key={note.id}
-                  className={[
-                    'note-item',
-                    note.pinned ? 'note-item--pinned' : '',
-                    isDragging ? 'note-item--dragging' : '',
-                    isInsertBefore ? 'note-item--insert-before' : '',
-                    isInsertAfter ? 'note-item--insert-after' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  draggable={!isEditing}
-                  onDragStart={(event) => handleDragStart(note, event)}
-                  onDragOver={(event) => handleDragOver(note, event)}
-                  onDrop={(event) => void handleDrop(note, event)}
-                  onDragEnd={clearDragState}
-                >
-                  {isEditing ? (
-                    <textarea
-                      className="note-edit-input"
-                      value={editBody}
-                      onChange={(event) => setEditBody(event.target.value)}
-                      onKeyDown={(event) => handleEditKeyDown(event, note.id)}
-                      autoFocus
-                      maxLength={200}
-                      rows={2}
+                <Fragment key={note.id}>
+                  {isInsertBefore ? (
+                    <li
+                      className="note-drop-spacer"
+                      aria-hidden="true"
+                      onDragOver={handleDropSpacerOver}
+                      onDrop={(event) => void handleDropByIndicator(event)}
                     />
-                  ) : (
-                    <div className="note-row">
-                      <p>{renderLinkedText(note.body)}</p>
-                      <button
-                        type="button"
-                        className={`pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
-                        onClick={() => handleTogglePin(note)}
-                        aria-label={note.pinned ? 'ピン留め解除' : 'ピン留め'}
-                        title={note.pinned ? 'ピン留め解除' : 'ピン留め'}
+                  ) : null}
+                  <li
+                    className={[
+                      'note-item',
+                      note.pinned ? 'note-item--pinned' : '',
+                      isDragging ? 'note-item--dragging' : '',
+                      isTouchDragging ? 'note-item--touch-dragging' : '',
+                      isDragFollowing ? 'note-item--drag-follow' : '',
+                      swipeHint && swipeHint.direction === 'edit' ? 'note-item--swipe-edit' : '',
+                      swipeHint && swipeHint.direction === 'delete'
+                        ? 'note-item--swipe-delete'
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    data-note-id={note.id}
+                    style={Object.keys(itemStyle).length > 0 ? itemStyle : undefined}
+                    draggable={!isEditing && !isTouchLayout}
+                    onDragStart={(event) => handleDragStart(note, event)}
+                    onDrag={(event) => handleDrag(note, event)}
+                    onDragOver={(event) => handleDragOver(note, event)}
+                    onDrop={(event) => void handleDrop(note, event)}
+                    onDragEnd={clearDragState}
+                    onTouchStart={(event) => handleTouchStart(note, event)}
+                    onTouchMove={(event) => handleTouchMove(note, event)}
+                    onTouchEnd={(event) => void handleTouchEnd(note, event)}
+                    onTouchCancel={() => {
+                      clearDragState()
+                      clearSwipeState()
+                    }}
+                  >
+                    {swipeHint ? (
+                      <div
+                        className={[
+                          'note-swipe-hint',
+                          swipeHint.direction === 'edit'
+                            ? 'note-swipe-hint--edit'
+                            : 'note-swipe-hint--delete',
+                        ].join(' ')}
                       >
-                        📌
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="note-footer">
-                    <small>{updatedLabel ? `Updated: ${updatedLabel}` : ''}</small>
-                    <div className="actions">
-                      {isEditing ? (
-                        <>
-                          <button type="button" onClick={() => void handleUpdate(note.id, editBody)} disabled={!canSaveEdit}>
-                            保存
-                          </button>
-                          <button type="button" className="btn-logout" onClick={cancelEdit}>
-                            キャンセル
-                          </button>
-                        </>
-                      ) : (
-                        <button type="button" className="btn-edit" onClick={() => startEdit(note)}>
-                          編集
+                        {swipeHint.direction === 'edit' ? '→ 編集' : '← 削除'}
+                      </div>
+                    ) : null}
+                    {isEditing ? (
+                      <textarea
+                        className="note-edit-input"
+                        value={editBody}
+                        onChange={(event) => setEditBody(event.target.value)}
+                        onKeyDown={(event) => handleEditKeyDown(event, note.id)}
+                        autoFocus
+                        maxLength={200}
+                        rows={2}
+                      />
+                    ) : (
+                      <div className="note-row">
+                        <p>{renderLinkedText(note.body)}</p>
+                        <button
+                          type="button"
+                          className={`pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
+                          onClick={() => handleTogglePin(note)}
+                          aria-label={note.pinned ? 'ピン留め解除' : 'ピン留め'}
+                          title={note.pinned ? 'ピン留め解除' : 'ピン留め'}
+                        >
+                          📌
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        className="danger"
-                        onClick={() => handleDelete(note.id)}
-                      >
-                        削除
-                      </button>
+                      </div>
+                    )}
+
+                    <div className="note-footer">
+                      <small>{updatedLabel ? `Updated: ${updatedLabel}` : ''}</small>
+                      {showActions ? (
+                        <div className="actions">
+                          {isEditing ? (
+                            <>
+                              <button type="button" onClick={() => void handleUpdate(note.id, editBody)} disabled={!canSaveEdit}>
+                                保存
+                              </button>
+                              <button type="button" className="btn-logout" onClick={cancelEdit}>
+                                キャンセル
+                              </button>
+                            </>
+                          ) : (
+                            <button type="button" className="btn-edit" onClick={() => startEdit(note)}>
+                              編集
+                            </button>
+                          )}
+                          {!isTouchLayout ? (
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => handleDelete(note.id)}
+                            >
+                              削除
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-                </li>
+                  </li>
+                  {isInsertAfter ? (
+                    <li
+                      className="note-drop-spacer"
+                      aria-hidden="true"
+                      onDragOver={handleDropSpacerOver}
+                      onDrop={(event) => void handleDropByIndicator(event)}
+                    />
+                  ) : null}
+                </Fragment>
               )
             })}
           </ul>
