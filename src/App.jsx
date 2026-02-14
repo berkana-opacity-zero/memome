@@ -261,6 +261,8 @@ function App() {
   const dragFollowerRafRef = useRef(0)
   const pendingDragFollowerRef = useRef({ noteId: '', clientX: 0, clientY: 0 })
   const lastDragFollowerRef = useRef({ noteId: '', clientX: NaN, clientY: NaN })
+  const touchScrollLockRef = useRef(false)
+  const preventTouchScrollRef = useRef(null)
   const swipeRef = useRef({
     noteId: '',
     startX: 0,
@@ -330,31 +332,17 @@ function App() {
       if (dragFollowerRafRef.current) {
         window.cancelAnimationFrame(dragFollowerRafRef.current)
       }
+      if (typeof window !== 'undefined' && preventTouchScrollRef.current) {
+        window.removeEventListener('touchmove', preventTouchScrollRef.current, { capture: true })
+        preventTouchScrollRef.current = null
+      }
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove('is-note-dragging')
+        document.body.classList.remove('is-note-dragging')
+      }
+      touchScrollLockRef.current = false
     }
   }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return undefined
-    }
-    if (!touchDragId) {
-      return undefined
-    }
-
-    const preventTouchScroll = (event) => {
-      event.preventDefault()
-    }
-
-    document.documentElement.classList.add('is-note-dragging')
-    document.body.classList.add('is-note-dragging')
-    window.addEventListener('touchmove', preventTouchScroll, { passive: false })
-
-    return () => {
-      window.removeEventListener('touchmove', preventTouchScroll)
-      document.documentElement.classList.remove('is-note-dragging')
-      document.body.classList.remove('is-note-dragging')
-    }
-  }, [touchDragId])
 
   useEffect(() => {
     if (typeof Image === 'undefined') {
@@ -553,8 +541,45 @@ function App() {
     }
   }
 
+  const lockTouchScroll = () => {
+    if (touchScrollLockRef.current) {
+      return
+    }
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
+    const preventTouchScroll = (event) => {
+      event.preventDefault()
+    }
+
+    touchScrollLockRef.current = true
+    preventTouchScrollRef.current = preventTouchScroll
+    document.documentElement.classList.add('is-note-dragging')
+    document.body.classList.add('is-note-dragging')
+    window.addEventListener('touchmove', preventTouchScroll, { passive: false, capture: true })
+  }
+
+  const unlockTouchScroll = () => {
+    if (!touchScrollLockRef.current) {
+      return
+    }
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
+    if (preventTouchScrollRef.current) {
+      window.removeEventListener('touchmove', preventTouchScrollRef.current, { capture: true })
+      preventTouchScrollRef.current = null
+    }
+    touchScrollLockRef.current = false
+    document.documentElement.classList.remove('is-note-dragging')
+    document.body.classList.remove('is-note-dragging')
+  }
+
   const clearDragState = () => {
     clearLongPressTimer()
+    unlockTouchScroll()
     if (dragFollowerRafRef.current) {
       window.cancelAnimationFrame(dragFollowerRafRef.current)
       dragFollowerRafRef.current = 0
@@ -743,6 +768,7 @@ function App() {
         return
       }
       const dragStart = swipeRef.current
+      lockTouchScroll()
       dragIdRef.current = note.id
       setDragId(note.id)
       setTouchDragId(note.id)
