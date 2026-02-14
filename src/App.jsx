@@ -170,7 +170,7 @@ function formatTimestamp(value) {
 }
 
 function getErrorMessage(error) {
-  const message = typeof error?.message === 'string' ? error.message : 'Unexpected error.'
+  const message = typeof error?.message === 'string' ? error.message : '予期しないエラーが発生しました。'
 
   if (message.includes('Missing or insufficient permissions')) {
     return 'Firestoreの権限エラーです。Firebaseコンソールのルール設定を確認してください。'
@@ -389,7 +389,7 @@ function App() {
         setUser(null)
         setNotes([])
         setAuthLoading(false)
-        setErrorMessage('このGoogleアカウントは利用できません。許可済みアカウントでログインしてください。')
+        setErrorMessage('このアカウントは利用できません。許可済みアカウントでログインしてください。')
         void signOut(auth).catch(() => { })
         return
       }
@@ -1196,8 +1196,8 @@ function App() {
 
   const renderConfigError = () => (
     <section className="setup-card">
-      <h1>Firebase config is missing</h1>
-      <p>Create <code>.env.local</code> from <code>.env.example</code> and fill your values.</p>
+      <h1>Firebase設定が未完了です</h1>
+      <p><code>.env.example</code> をもとに <code>.env.local</code> を作成し、値を設定してください。</p>
       <p className="hint">{firebaseConfigError}</p>
     </section>
   )
@@ -1228,7 +1228,7 @@ function App() {
       <header className="app-header">
         <div className="header-meta">
           <h1>MemoMe</h1>
-          <p>{user.displayName || 'Google User'}</p>
+          <p>{user.displayName || 'Googleユーザー'}</p>
         </div>
         <div className="header-actions">
           <button
@@ -1396,7 +1396,7 @@ function App() {
                     )}
 
                     <div className="note-footer">
-                      <small>{updatedLabel ? `Updated: ${updatedLabel}` : ''}</small>
+                      <small>{updatedLabel ? `更新: ${updatedLabel}` : ''}</small>
                       {showActions ? (
                         <div className="actions">
                           {isEditing ? (

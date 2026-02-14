@@ -24,7 +24,7 @@ const missingKeys = requiredKeys.filter((key) => isUnset(import.meta.env[key]))
 
 export const firebaseConfigError =
   missingKeys.length > 0
-    ? `Missing environment variables: ${missingKeys.join(', ')}`
+    ? `不足している環境変数: ${missingKeys.join(', ')}`
     : null
 
 const firebaseConfig = {
