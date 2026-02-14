@@ -23,6 +23,20 @@ import { auth, db, firebaseConfigError } from './lib/firebase'
 const provider = new GoogleAuthProvider()
 const URL_SPLIT_PATTERN = /(https?:\/\/[^\s]+)/gi
 const STRICT_URL_PATTERN = /^https?:\/\/[^\s]+$/i
+const THEME_STORAGE_KEY = 'memome-theme'
+
+function getInitialTheme() {
+  if (typeof window === 'undefined') {
+    return 'light'
+  }
+
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
 
 function toMillis(value) {
   if (!value) {
@@ -169,6 +183,7 @@ function isSubmitShortcut(event) {
 }
 
 function App() {
+  const [theme, setTheme] = useState(getInitialTheme)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(!firebaseConfigError)
   const [notesLoading, setNotesLoading] = useState(false)
@@ -200,6 +215,11 @@ function App() {
   }, [orderedNotes])
   const canSubmitDraft = normalizeBody(draft).length > 0
   const canSaveEdit = normalizeBody(editBody).length > 0
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   useEffect(() => {
     if (!auth) {
@@ -280,6 +300,10 @@ function App() {
     } finally {
       setAuthPending(false)
     }
+  }
+
+  const handleToggleTheme = () => {
+    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
   }
 
   const submitCreate = () => {
@@ -597,18 +621,29 @@ function App() {
   const renderNotes = () => (
     <>
       <header className="app-header">
-        <div>
+        <div className="header-meta">
           <h1>MemoMe</h1>
           <p>{user.displayName || 'Google User'}</p>
         </div>
-        <button
-          type="button"
-          className="btn-logout"
-          onClick={handleSignOut}
-          disabled={authPending}
-        >
-          ログアウト
-        </button>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={handleToggleTheme}
+            aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+            title={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+          >
+            <span aria-hidden="true">{theme === 'dark' ? '☀' : '🌙'}</span>
+          </button>
+          <button
+            type="button"
+            className="btn-logout"
+            onClick={handleSignOut}
+            disabled={authPending}
+          >
+            ログアウト
+          </button>
+        </div>
       </header>
 
       <form className="composer" onSubmit={handleCreate}>
@@ -632,7 +667,7 @@ function App() {
       <section className="notes-section">
         <div className="notes-title">
           <h2>保存したメモ</h2>
-          {notesLoading ? <span>同期中...</span> : <span>{notes.length} items</span>}
+          {notesLoading ? <span>同期中...</span> : <span>{notes.length} 件</span>}
         </div>
 
         {notes.length === 0 && !notesLoading ? (
@@ -645,18 +680,18 @@ function App() {
               const noteGroupMeta = noteGroupMetaById.get(note.id)
               const isInsertBefore = Boolean(
                 dropIndicator &&
-                  noteGroupMeta &&
-                  dropIndicator.pinned === noteGroupMeta.pinned &&
-                  dropIndicator.index === noteGroupMeta.index &&
-                  dragId !== note.id,
+                noteGroupMeta &&
+                dropIndicator.pinned === noteGroupMeta.pinned &&
+                dropIndicator.index === noteGroupMeta.index &&
+                dragId !== note.id,
               )
               const isInsertAfter = Boolean(
                 dropIndicator &&
-                  noteGroupMeta &&
-                  noteGroupMeta.index === noteGroupMeta.size - 1 &&
-                  dropIndicator.pinned === noteGroupMeta.pinned &&
-                  dropIndicator.index === noteGroupMeta.size &&
-                  dragId !== note.id,
+                noteGroupMeta &&
+                noteGroupMeta.index === noteGroupMeta.size - 1 &&
+                dropIndicator.pinned === noteGroupMeta.pinned &&
+                dropIndicator.index === noteGroupMeta.size &&
+                dragId !== note.id,
               )
               const updatedLabel = formatTimestamp(note.updatedAt)
 
