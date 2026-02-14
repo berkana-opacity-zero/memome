@@ -6,6 +6,15 @@
   transition: color 180ms ease;
 }
 
+html.is-note-dragging,
+body.is-note-dragging {
+  overscroll-behavior-y: none;
+}
+
+body.is-note-dragging {
+  touch-action: none;
+}
+
 .app-shell h1,
 .app-shell h2,
 .app-shell p {
@@ -191,7 +200,7 @@ button:disabled {
 }
 
 .notes-title span {
-  font-size: 0.85rem;
+  font-size: 0.92rem;
 }
 
 .notes-list {
@@ -247,6 +256,7 @@ button:disabled {
   cursor: grabbing;
   pointer-events: none;
   z-index: 24;
+  will-change: transform;
   position: fixed;
   left: var(--drag-left, 0px);
   top: var(--drag-top, 0px);
@@ -264,6 +274,7 @@ button:disabled {
   opacity: 1;
   cursor: grabbing;
   z-index: 5;
+  will-change: transform;
   border-top-width: 1px;
   transform: translateY(-3px) scale(1.01);
   box-shadow:
@@ -609,6 +620,10 @@ button:disabled {
 
   .composer-row {
     grid-template-columns: 1fr;
+  }
+
+  .composer {
+    margin-bottom: 1.05rem;
   }
 
   .notes-list {

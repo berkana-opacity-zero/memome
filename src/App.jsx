@@ -32,6 +32,11 @@ const LONG_PRESS_DRAG_MS = 360
 const TOUCH_DRAG_MOVE_THRESHOLD_PX = 10
 const TOUCH_DRAG_ACTIVATE_MOVE_PX = 8
 const INSERT_GAP_PX = 72
+const ALLOWED_USER_EMAILS = new Set([
+  'gorizo.5170@gmail.com',
+  'n.nanami73@gmail.com',
+  'berkana.work@gmail.com',
+])
 const TRANSPARENT_DRAG_PIXEL =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
@@ -231,6 +236,18 @@ function isSubmitShortcut(event) {
   return event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey
 }
 
+function normalizeEmail(value) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value.trim().toLowerCase()
+}
+
+function isAllowedUser(user) {
+  return ALLOWED_USER_EMAILS.has(normalizeEmail(user?.email))
+}
+
 function App() {
   const [theme, setTheme] = useState(getInitialTheme)
   const [isTouchLayout, setIsTouchLayout] = useState(getInitialTouchLayout)
@@ -254,6 +271,9 @@ function App() {
   const dragIdRef = useRef('')
   const longPressTimerRef = useRef(null)
   const transparentDragImageRef = useRef(null)
+  const dragFollowerRafRef = useRef(0)
+  const pendingDragFollowerRef = useRef({ noteId: '', clientX: 0, clientY: 0 })
+  const lastDragFollowerRef = useRef({ noteId: '', clientX: NaN, clientY: NaN })
   const swipeRef = useRef({
     noteId: '',
     startX: 0,
@@ -264,6 +284,13 @@ function App() {
     itemHeight: 0,
   })
   const orderedNotes = useMemo(() => sortNotes(notes), [notes])
+  const orderedNotesById = useMemo(() => {
+    const byId = new Map()
+    orderedNotes.forEach((note) => {
+      byId.set(note.id, note)
+    })
+    return byId
+  }, [orderedNotes])
   const noteGroupMetaById = useMemo(() => {
     const byId = new Map()
     const pinnedNotes = orderedNotes.filter((note) => Boolean(note.pinned))
@@ -313,8 +340,34 @@ function App() {
       if (longPressTimerRef.current) {
         window.clearTimeout(longPressTimerRef.current)
       }
+      if (dragFollowerRafRef.current) {
+        window.cancelAnimationFrame(dragFollowerRafRef.current)
+      }
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return undefined
+    }
+    if (!touchDragId) {
+      return undefined
+    }
+
+    const preventTouchScroll = (event) => {
+      event.preventDefault()
+    }
+
+    document.documentElement.classList.add('is-note-dragging')
+    document.body.classList.add('is-note-dragging')
+    window.addEventListener('touchmove', preventTouchScroll, { passive: false })
+
+    return () => {
+      window.removeEventListener('touchmove', preventTouchScroll)
+      document.documentElement.classList.remove('is-note-dragging')
+      document.body.classList.remove('is-note-dragging')
+    }
+  }, [touchDragId])
 
   useEffect(() => {
     if (typeof Image === 'undefined') {
@@ -332,6 +385,15 @@ function App() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      if (nextUser && !isAllowedUser(nextUser)) {
+        setUser(null)
+        setNotes([])
+        setAuthLoading(false)
+        setErrorMessage('このGoogleアカウントは利用できません。許可済みアカウントでログインしてください。')
+        void signOut(auth).catch(() => { })
+        return
+      }
+
       setUser(nextUser)
       setAuthLoading(false)
     })
@@ -506,6 +568,12 @@ function App() {
 
   const clearDragState = () => {
     clearLongPressTimer()
+    if (dragFollowerRafRef.current) {
+      window.cancelAnimationFrame(dragFollowerRafRef.current)
+      dragFollowerRafRef.current = 0
+    }
+    pendingDragFollowerRef.current = { noteId: '', clientX: 0, clientY: 0 }
+    lastDragFollowerRef.current = { noteId: '', clientX: NaN, clientY: NaN }
     dragIdRef.current = ''
     setDragId('')
     setTouchDragId('')
@@ -541,19 +609,44 @@ function App() {
       return
     }
 
-    setDragFollower((current) => {
-      if (!current || current.noteId !== noteId) {
-        return current
-      }
-      if (Math.abs(current.currentX - clientX) < 0.5 && Math.abs(current.currentY - clientY) < 0.5) {
-        return current
+    pendingDragFollowerRef.current = { noteId, clientX, clientY }
+    if (dragFollowerRafRef.current) {
+      return
+    }
+
+    dragFollowerRafRef.current = window.requestAnimationFrame(() => {
+      dragFollowerRafRef.current = 0
+
+      const pending = pendingDragFollowerRef.current
+      const roundedX = Math.round(pending.clientX)
+      const roundedY = Math.round(pending.clientY)
+      const last = lastDragFollowerRef.current
+
+      if (
+        last.noteId === pending.noteId &&
+        last.clientX === roundedX &&
+        last.clientY === roundedY
+      ) {
+        return
       }
 
-      return {
-        ...current,
-        currentX: clientX,
-        currentY: clientY,
-      }
+      setDragFollower((current) => {
+        if (!current || current.noteId !== pending.noteId) {
+          return current
+        }
+
+        lastDragFollowerRef.current = {
+          noteId: pending.noteId,
+          clientX: roundedX,
+          clientY: roundedY,
+        }
+
+        return {
+          ...current,
+          currentX: roundedX,
+          currentY: roundedY,
+        }
+      })
     })
   }
 
@@ -611,6 +704,16 @@ function App() {
       itemTop: targetRect.top,
       itemWidth: targetRect.width,
     })
+    lastDragFollowerRef.current = {
+      noteId: note.id,
+      clientX: Math.round(startX),
+      clientY: Math.round(startY),
+    }
+    pendingDragFollowerRef.current = {
+      noteId: note.id,
+      clientX: startX,
+      clientY: startY,
+    }
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', note.id)
     if (transparentDragImageRef.current) {
@@ -668,6 +771,16 @@ function App() {
         itemTop: dragStart.itemTop,
         itemWidth: dragStart.itemWidth,
       })
+      lastDragFollowerRef.current = {
+        noteId: note.id,
+        clientX: Math.round(dragStart.startX),
+        clientY: Math.round(dragStart.startY),
+      }
+      pendingDragFollowerRef.current = {
+        noteId: note.id,
+        clientX: dragStart.startX,
+        clientY: dragStart.startY,
+      }
       setSwipePreview({ noteId: '', direction: '', progress: 0 })
     }, LONG_PRESS_DRAG_MS)
   }
@@ -677,7 +790,7 @@ function App() {
       return false
     }
 
-    const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
+    const draggingNote = orderedNotesById.get(activeDragId)
     if (!draggingNote) {
       return false
     }
@@ -762,7 +875,7 @@ function App() {
         return
       }
 
-      const targetNote = orderedNotes.find((item) => item.id === targetId)
+      const targetNote = orderedNotesById.get(targetId)
       if (!targetNote) {
         return
       }
@@ -824,7 +937,7 @@ function App() {
 
     const activeTouchDragId = touchDragId || dragIdRef.current
     if (activeTouchDragId) {
-      const draggingNote = orderedNotes.find((item) => item.id === activeTouchDragId)
+      const draggingNote = orderedNotesById.get(activeTouchDragId)
       if (draggingNote) {
         let insertIndex = -1
         if (dropIndicator && dropIndicator.pinned === Boolean(draggingNote.pinned)) {
@@ -974,7 +1087,7 @@ function App() {
       return
     }
 
-    const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
+    const draggingNote = orderedNotesById.get(activeDragId)
     if (!draggingNote) {
       return
     }
@@ -999,7 +1112,7 @@ function App() {
     }
 
     if (indicatorSnapshot) {
-      const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
+      const draggingNote = orderedNotesById.get(activeDragId)
       if (draggingNote && indicatorSnapshot.pinned === Boolean(draggingNote.pinned)) {
         await reorderWithinGroup(
           activeDragId,
@@ -1014,7 +1127,7 @@ function App() {
       return
     }
 
-    const draggingNote = orderedNotes.find((item) => item.id === activeDragId)
+    const draggingNote = orderedNotesById.get(activeDragId)
     if (!draggingNote) {
       clearDragState()
       return
@@ -1060,7 +1173,7 @@ function App() {
       return
     }
 
-    const ok = window.confirm('Delete this note?')
+    const ok = window.confirm('削除します。よろしいですか？')
     if (!ok) {
       return
     }
