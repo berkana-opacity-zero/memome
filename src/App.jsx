@@ -1223,100 +1223,118 @@ function App() {
     </section>
   )
 
-  const renderNotes = () => (
-    <>
-      <header className="app-header">
-        <div className="header-meta">
-          <h1>MemoMe</h1>
-          <p>{user.displayName || 'Googleユーザー'}</p>
-        </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={handleToggleTheme}
-            aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
-            title={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
-          >
-            <span aria-hidden="true">{theme === 'dark' ? '☀' : '🌙'}</span>
-          </button>
-          <button
-            type="button"
-            className="btn-logout"
-            onClick={handleSignOut}
-            disabled={authPending}
-          >
-            ログアウト
-          </button>
-        </div>
-      </header>
+  const renderNotes = () => {
+    const displayName = user.displayName || 'Googleユーザー'
+    const avatarFallback = displayName.trim().slice(0, 1) || 'G'
 
-      <form className="composer" onSubmit={handleCreate}>
-        <div className="composer-row">
-          <textarea
-            id="new-note"
-            ref={draftInputRef}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={handleDraftKeyDown}
-            placeholder="メモを入力してください"
-            maxLength={200}
-            rows={2}
-          />
-          <button type="submit" className="btn-add" disabled={!canSubmitDraft}>
-            追加
-          </button>
-        </div>
-      </form>
+    return (
+      <>
+        <header className="app-header">
+          <div className="header-brand">
+            <h1>MemoMe</h1>
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={handleToggleTheme}
+              aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+              title={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+            >
+              <span aria-hidden="true">{theme === 'dark' ? '☀' : '🌙'}</span>
+            </button>
+          </div>
+          <div className="header-user-row">
+            <div className="header-user">
+              {user.photoURL ? (
+                <img
+                  className="header-avatar"
+                  src={user.photoURL}
+                  alt={`${displayName}のプロフィール画像`}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="header-avatar header-avatar-fallback" aria-hidden="true">
+                  {avatarFallback}
+                </span>
+              )}
+              <p>{displayName}</p>
+            </div>
+            <button
+              type="button"
+              className="btn-logout"
+              onClick={handleSignOut}
+              disabled={authPending}
+            >
+              ログアウト
+            </button>
+          </div>
+        </header>
 
-      <section className="notes-section">
-        <div className="notes-title">
-          <h2>保存したメモ</h2>
-          {notesLoading ? <span>同期中...</span> : <span>{notes.length} 件</span>}
-        </div>
+        <form className="composer" onSubmit={handleCreate}>
+          <div className="composer-row">
+            <textarea
+              id="new-note"
+              ref={draftInputRef}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={handleDraftKeyDown}
+              placeholder="メモを入力してください"
+              maxLength={200}
+              rows={2}
+            />
+            <button type="submit" className="btn-add" disabled={!canSubmitDraft}>
+              追加
+            </button>
+          </div>
+        </form>
 
-        {notes.length === 0 && !notesLoading ? (
-          <p className="empty-state">メモがありません</p>
-        ) : (
-          <ul className="notes-list" style={{ '--insert-gap': `${insertGapPx}px` }}>
-            {orderedNotes.map((note) => {
-              const isEditing = editId === note.id
-              const isDragging = dragId === note.id
-              const isTouchDragging = touchDragId === note.id
-              const dragFollowState =
-                dragFollower && dragFollower.noteId === note.id ? dragFollower : null
-              const isDragFollowing = Boolean(dragFollowState && dragMovedId === note.id)
-              const noteGroupMeta = noteGroupMetaById.get(note.id)
-              const isInsertBefore = Boolean(
-                dropIndicator &&
-                noteGroupMeta &&
-                dropIndicator.pinned === noteGroupMeta.pinned &&
-                dropIndicator.index === noteGroupMeta.index &&
-                dragId !== note.id,
-              )
-              const isInsertAfter = Boolean(
-                dropIndicator &&
-                noteGroupMeta &&
-                noteGroupMeta.index === noteGroupMeta.size - 1 &&
-                dropIndicator.pinned === noteGroupMeta.pinned &&
-                dropIndicator.index === noteGroupMeta.size &&
-                dragId !== note.id,
-              )
-              const swipeHint =
-                swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
-              const updatedLabel = formatTimestamp(note.updatedAt)
-              const showActions = isEditing || !isTouchLayout
-              const itemStyle = {}
-              if (swipeHint) {
-                itemStyle['--swipe-progress'] = swipeHint.progress
-              }
-              if (dragFollowState) {
-                itemStyle['--drag-dx'] = `${Math.round(dragFollowState.currentX - dragFollowState.startX)}px`
-                itemStyle['--drag-dy'] = `${Math.round(dragFollowState.currentY - dragFollowState.startY)}px`
-                itemStyle['--drag-left'] = `${Math.round(dragFollowState.itemLeft)}px`
-                itemStyle['--drag-top'] = `${Math.round(dragFollowState.itemTop)}px`
-                itemStyle['--drag-width'] = `${Math.round(dragFollowState.itemWidth)}px`
-              }
+        <section className="notes-section">
+          <div className="notes-title">
+            <h2>保存したメモ</h2>
+            {notesLoading ? <span>同期中...</span> : <span>{notes.length} 件</span>}
+          </div>
+
+          {notes.length === 0 && !notesLoading ? (
+            <p className="empty-state">メモがありません</p>
+          ) : (
+            <ul className="notes-list" style={{ '--insert-gap': `${insertGapPx}px` }}>
+              {orderedNotes.map((note) => {
+                const isEditing = editId === note.id
+                const isDragging = dragId === note.id
+                const isTouchDragging = touchDragId === note.id
+                const dragFollowState =
+                  dragFollower && dragFollower.noteId === note.id ? dragFollower : null
+                const isDragFollowing = Boolean(dragFollowState && dragMovedId === note.id)
+                const noteGroupMeta = noteGroupMetaById.get(note.id)
+                const isInsertBefore = Boolean(
+                  dropIndicator &&
+                  noteGroupMeta &&
+                  dropIndicator.pinned === noteGroupMeta.pinned &&
+                  dropIndicator.index === noteGroupMeta.index &&
+                  dragId !== note.id,
+                )
+                const isInsertAfter = Boolean(
+                  dropIndicator &&
+                  noteGroupMeta &&
+                  noteGroupMeta.index === noteGroupMeta.size - 1 &&
+                  dropIndicator.pinned === noteGroupMeta.pinned &&
+                  dropIndicator.index === noteGroupMeta.size &&
+                  dragId !== note.id,
+                )
+                const swipeHint =
+                  swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
+                const updatedLabel = formatTimestamp(note.updatedAt)
+                const showActions = isEditing || !isTouchLayout
+                const itemStyle = {}
+                if (swipeHint) {
+                  itemStyle['--swipe-progress'] = swipeHint.progress
+                }
+                if (dragFollowState) {
+                  itemStyle['--drag-dx'] = `${Math.round(dragFollowState.currentX - dragFollowState.startX)}px`
+                  itemStyle['--drag-dy'] = `${Math.round(dragFollowState.currentY - dragFollowState.startY)}px`
+                  itemStyle['--drag-left'] = `${Math.round(dragFollowState.itemLeft)}px`
+                  itemStyle['--drag-top'] = `${Math.round(dragFollowState.itemTop)}px`
+                  itemStyle['--drag-width'] = `${Math.round(dragFollowState.itemWidth)}px`
+                }
 
               return (
                 <Fragment key={note.id}>
@@ -1436,12 +1454,13 @@ function App() {
                   ) : null}
                 </Fragment>
               )
-            })}
-          </ul>
-        )}
-      </section>
-    </>
-  )
+              })}
+            </ul>
+          )}
+        </section>
+      </>
+    )
+  }
 
   return (
     <main className="app-shell">
