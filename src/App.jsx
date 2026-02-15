@@ -1328,8 +1328,7 @@ function App() {
     return (
       <>
         <header className="app-header">
-          <div className="header-brand">
-            <h1>MemoMe</h1>
+          <div className="header-user-row">
             <button
               type="button"
               className="theme-toggle"
@@ -1337,10 +1336,8 @@ function App() {
               aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
               title={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
             >
-              <span aria-hidden="true">{theme === 'dark' ? '☀' : '🌙'}</span>
+              <span aria-hidden="true">💡</span>
             </button>
-          </div>
-          <div className="header-user-row">
             <div className="header-user">
               {user.photoURL ? (
                 <img
