@@ -32,11 +32,6 @@ const LONG_PRESS_DRAG_MS = 360
 const TOUCH_DRAG_MOVE_THRESHOLD_PX = 10
 const TOUCH_DRAG_ACTIVATE_MOVE_PX = 8
 const INSERT_GAP_PX = 72
-const ALLOWED_USER_EMAILS = new Set([
-  'gorizo.5170@gmail.com',
-  'n.nanami73@gmail.com',
-  'berkana.work@gmail.com',
-])
 const TRANSPARENT_DRAG_PIXEL =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
@@ -157,7 +152,12 @@ function findPinnedTopIndex(items) {
 }
 
 function getErrorMessage(error) {
+  const errorCode = typeof error?.code === 'string' ? error.code : ''
   const message = typeof error?.message === 'string' ? error.message : '予期しないエラーが発生しました。'
+
+  if (errorCode === 'permission-denied' || errorCode === 'firestore/permission-denied') {
+    return 'このアカウントは利用できません。許可済みアカウントでログインしてください。'
+  }
 
   if (message.includes('Missing or insufficient permissions')) {
     return 'Firestoreの権限エラーです。Firebaseコンソールのルール設定を確認してください。'
@@ -221,18 +221,6 @@ function isInteractiveDragTarget(target) {
 
 function isSubmitShortcut(event) {
   return event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey
-}
-
-function normalizeEmail(value) {
-  if (typeof value !== 'string') {
-    return ''
-  }
-
-  return value.trim().toLowerCase()
-}
-
-function isAllowedUser(user) {
-  return ALLOWED_USER_EMAILS.has(normalizeEmail(user?.email))
 }
 
 function App() {
@@ -366,15 +354,6 @@ function App() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
-      if (nextUser && !isAllowedUser(nextUser)) {
-        setUser(null)
-        setNotes([])
-        setAuthLoading(false)
-        setErrorMessage('このアカウントは利用できません。許可済みアカウントでログインしてください。')
-        void signOut(auth).catch(() => { })
-        return
-      }
-
       setUser(nextUser)
       setAuthLoading(false)
     })
@@ -400,6 +379,18 @@ function App() {
         setNotesLoading(false)
       },
       (error) => {
+        if (
+          error?.code === 'permission-denied' ||
+          error?.code === 'firestore/permission-denied'
+        ) {
+          setNotes([])
+          setNotesLoading(false)
+          setErrorMessage('このアカウントは利用できません。許可済みアカウントでログインしてください。')
+          if (auth) {
+            void signOut(auth).catch(() => { })
+          }
+          return
+        }
         setErrorMessage(getErrorMessage(error))
         setNotesLoading(false)
       },

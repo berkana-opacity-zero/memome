@@ -29,21 +29,10 @@ Required keys:
 
 ### Firestore Database
 1. Create database in production mode
-2. Create rules:
+2. Apply rules from `firestore.rules`:
 
-```firestore
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /notes/{noteId} {
-      allow read, delete: if request.auth != null && resource.data.uid == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update: if request.auth != null
-                    && resource.data.uid == request.auth.uid
-                    && request.resource.data.uid == request.auth.uid;
-    }
-  }
-}
+```bash
+firebase deploy --only firestore:rules
 ```
 
 No manual collection creation is needed. A `notes` collection is auto-created when the first note is added.

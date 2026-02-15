@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAllowedEmail() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'gorizo.5170@gmail.com',
+          'n.nanami73@gmail.com',
+          'berkana.work@gmail.com'
+        ];
+    }
+
+    function hasAllowedNoteKeys(data) {
+      return data.keys().hasOnly([
+        'uid',
+        'body',
+        'pinned',
+        'sortIndex',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function hasRequiredCreateKeys(data) {
+      return data.keys().hasAll([
+        'uid',
+        'body',
+        'pinned',
+        'sortIndex',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function hasValidNoteShape(data) {
+      return data.uid is string
+        && data.uid.size() > 0
+        && data.body is string
+        && data.body.size() > 0
+        && data.body.size() <= 100000
+        && (!('pinned' in data) || data.pinned is bool)
+        && (!('sortIndex' in data) || data.sortIndex is int)
+        && (!('createdAt' in data) || data.createdAt is timestamp)
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function hasSafeUpdateDiff() {
+      return request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly(['uid', 'body', 'pinned', 'sortIndex', 'updatedAt']);
+    }
+
+    match /notes/{noteId} {
+      allow read, delete: if isAllowedEmail() && resource.data.uid == request.auth.uid;
+
+      allow create: if isAllowedEmail()
+        && request.resource.data.uid == request.auth.uid
+        && hasAllowedNoteKeys(request.resource.data)
+        && hasRequiredCreateKeys(request.resource.data)
+        && hasValidNoteShape(request.resource.data);
+
+      allow update: if isAllowedEmail()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && hasSafeUpdateDiff()
+        && hasValidNoteShape(request.resource.data)
+        && (
+          !('createdAt' in resource.data)
+          || request.resource.data.createdAt == resource.data.createdAt
+        );
+    }
+  }
+}
