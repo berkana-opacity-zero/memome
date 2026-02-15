@@ -204,7 +204,7 @@ function renderLinkedText(text) {
       part.trim() === ''
 
     if (isUrlSeparator) {
-      return null
+      return <span key={`sep-${index}`}>{'\n'}</span>
     }
 
     return <span key={`txt-${index}`}>{part}</span>
@@ -758,6 +758,20 @@ function App() {
     }
 
     updateDragFollowerPosition(note.id, event.clientX, event.clientY)
+  }
+
+  const handleTouchContextMenu = (event) => {
+    if (!isTouchLayout || editId || isInteractiveDragTarget(event.target)) {
+      return
+    }
+    event.preventDefault()
+  }
+
+  const handleNoteSelectStart = (event) => {
+    if (!isTouchLayout || editId || isInteractiveDragTarget(event.target)) {
+      return
+    }
+    event.preventDefault()
   }
 
   const handleTouchStart = (note, event) => {
@@ -1465,6 +1479,8 @@ function App() {
                     onTouchStart={(event) => handleTouchStart(note, event)}
                     onTouchMove={(event) => handleTouchMove(note, event)}
                     onTouchEnd={(event) => void handleTouchEnd(note, event)}
+                    onContextMenu={handleTouchContextMenu}
+                    onSelectStart={handleNoteSelectStart}
                     onTouchCancel={() => {
                       clearDragState()
                       clearSwipeState()
