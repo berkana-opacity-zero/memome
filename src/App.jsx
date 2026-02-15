@@ -1387,7 +1387,6 @@ function App() {
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={handleDraftKeyDown}
               placeholder="メモを入力してください"
-              maxLength={200}
               rows={2}
             />
             <button type="submit" className="btn-add" disabled={!canSubmitDraft}>
@@ -1505,7 +1504,6 @@ function App() {
                         onChange={(event) => setEditBody(event.target.value)}
                         onKeyDown={(event) => handleEditKeyDown(event, note.id)}
                         autoFocus
-                        maxLength={200}
                         rows={2}
                       />
                     ) : (
