@@ -706,7 +706,8 @@ button:disabled {
   }
 
   .note-row p {
-    display: block;
+    display: grid;
+    align-content: center;
     min-height: 2.35rem;
   }
 

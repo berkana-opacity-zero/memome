@@ -204,7 +204,7 @@ function renderLinkedText(text) {
       part.trim() === ''
 
     if (isUrlSeparator) {
-      return <span key={`sep-${index}`}>{'\n'}</span>
+      return <Fragment key={`sep-${index}`}>{'\n'}</Fragment>
     }
 
     return <span key={`txt-${index}`}>{part}</span>
