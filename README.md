@@ -44,6 +44,12 @@ No manual collection creation is needed. A `notes` collection is auto-created wh
 3. Add all `VITE_FIREBASE_*` variables in Project Settings -> Environment Variables
 4. Deploy
 
+## 4. Install as app (PWA)
+
+- Smartphone: Add to Home Screen from browser menu
+- Desktop Chrome/Edge: install from address bar icon or menu
+- Desktop Safari (macOS): Add to Dock
+
 ## Scripts
 
 - `npm run dev`: start local dev server
