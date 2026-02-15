@@ -354,6 +354,14 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.note-row,
+.note-row p,
+.note-row p * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .note-row a {
   color: #1d4ed8;
   text-decoration: underline;
