@@ -235,7 +235,6 @@ button:disabled {
 
 .notes-list {
   --notes-gap: 1rem;
-  --insert-gap: 72px;
   margin: 0;
   padding: 0;
   display: grid;
@@ -310,11 +309,27 @@ button:disabled {
     0 10px 22px -14px rgba(15, 23, 42, 0.58);
 }
 
-.note-drop-spacer {
-  list-style: none;
-  pointer-events: auto;
-  height: var(--insert-gap);
-  animation: spacer-grow 180ms ease;
+.note-item--insert-before::before,
+.note-item--insert-after::after {
+  content: '';
+  position: absolute;
+  left: 0.65rem;
+  right: 0.65rem;
+  height: 3px;
+  border-radius: 999px;
+  background: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.22);
+  pointer-events: none;
+  z-index: 6;
+  animation: insert-line-in 140ms ease;
+}
+
+.note-item--insert-before::before {
+  top: calc(var(--notes-gap) * -0.5);
+}
+
+.note-item--insert-after::after {
+  bottom: calc(var(--notes-gap) * -0.5);
 }
 
 .note-row {
@@ -588,15 +603,15 @@ button:disabled {
   }
 }
 
-@keyframes spacer-grow {
+@keyframes insert-line-in {
   from {
     opacity: 0;
-    height: 0;
+    transform: scaleX(0.35);
   }
 
   to {
     opacity: 1;
-    height: var(--insert-gap);
+    transform: scaleX(1);
   }
 }
 

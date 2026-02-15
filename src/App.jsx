@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -32,6 +32,7 @@ const LONG_PRESS_DRAG_MS = 360
 const TOUCH_DRAG_MOVE_THRESHOLD_PX = 10
 const TOUCH_DRAG_ACTIVATE_MOVE_PX = 8
 const INSERT_GAP_PX = 72
+const DRAG_STEP_HYSTERESIS_PX = 8
 const ALLOWED_USER_EMAILS = new Set([
   'gorizo.5170@gmail.com',
   'n.nanami73@gmail.com',
@@ -250,7 +251,6 @@ function App() {
   const [touchDragId, setTouchDragId] = useState('')
   const [dragMovedId, setDragMovedId] = useState('')
   const [dragFollower, setDragFollower] = useState(null)
-  const [insertGapPx, setInsertGapPx] = useState(INSERT_GAP_PX)
   const [dropIndicator, setDropIndicator] = useState(null)
   const [swipePreview, setSwipePreview] = useState({ noteId: '', direction: '', progress: 0 })
   const [errorMessage, setErrorMessage] = useState('')
@@ -261,7 +261,6 @@ function App() {
   const dragFollowerRafRef = useRef(0)
   const pendingDragFollowerRef = useRef({ noteId: '', clientX: 0, clientY: 0 })
   const lastDragFollowerRef = useRef({ noteId: '', clientX: NaN, clientY: NaN })
-  const lastDragProbeRef = useRef({ noteId: '', clientY: NaN })
   const dropIndicatorRef = useRef(null)
   const touchScrollLockRef = useRef(false)
   const preventTouchScrollRef = useRef(null)
@@ -594,14 +593,12 @@ function App() {
     }
     pendingDragFollowerRef.current = { noteId: '', clientX: 0, clientY: 0 }
     lastDragFollowerRef.current = { noteId: '', clientX: NaN, clientY: NaN }
-    lastDragProbeRef.current = { noteId: '', clientY: NaN }
     dropIndicatorRef.current = null
     dragIdRef.current = ''
     setDragId('')
     setTouchDragId('')
     setDragMovedId('')
     setDragFollower(null)
-    setInsertGapPx(INSERT_GAP_PX)
     setDropIndicator(null)
   }
 
@@ -715,7 +712,6 @@ function App() {
     dragIdRef.current = note.id
     setDragId(note.id)
     setDragMovedId('')
-    setInsertGapPx(Math.max(INSERT_GAP_PX, Math.round(targetRect.height)))
     setDragFollower({
       noteId: note.id,
       startX,
@@ -735,10 +731,6 @@ function App() {
     pendingDragFollowerRef.current = {
       noteId: note.id,
       clientX: startX,
-      clientY: startY,
-    }
-    lastDragProbeRef.current = {
-      noteId: note.id,
       clientY: startY,
     }
     const dataTransfer = event.dataTransfer ?? null
@@ -791,7 +783,6 @@ function App() {
       setDragId(note.id)
       setTouchDragId(note.id)
       setDragMovedId('')
-      setInsertGapPx(Math.max(INSERT_GAP_PX, Math.round(dragStart.itemHeight)))
       setDragFollower({
         noteId: note.id,
         startX: dragStart.startX,
@@ -811,10 +802,6 @@ function App() {
       pendingDragFollowerRef.current = {
         noteId: note.id,
         clientX: dragStart.startX,
-        clientY: dragStart.startY,
-      }
-      lastDragProbeRef.current = {
-        noteId: note.id,
         clientY: dragStart.startY,
       }
       setSwipePreview({ noteId: '', direction: '', progress: 0 })
@@ -853,7 +840,7 @@ function App() {
     return { top: rect.top, bottom: rect.bottom, deltaY: 0 }
   }
 
-  const setInsertIndicatorByDragBounds = (activeDragId, probeClientY = NaN) => {
+  const setInsertIndicatorByDragBounds = (activeDragId) => {
     if (!activeDragId || typeof document === 'undefined') {
       return false
     }
@@ -865,23 +852,6 @@ function App() {
 
     const draggingBounds = getDraggingVerticalBounds(activeDragId)
     if (!draggingBounds) {
-      return false
-    }
-
-    const previousProbe =
-      lastDragProbeRef.current.noteId === activeDragId ? lastDragProbeRef.current.clientY : NaN
-    if (Number.isFinite(probeClientY)) {
-      lastDragProbeRef.current = { noteId: activeDragId, clientY: probeClientY }
-    }
-
-    const probeDeltaY =
-      Number.isFinite(probeClientY) && Number.isFinite(previousProbe)
-        ? probeClientY - previousProbe
-        : 0
-
-    const movingUp = probeDeltaY < -0.5 || draggingBounds.deltaY < -0.5
-    const movingDown = probeDeltaY > 0.5 || draggingBounds.deltaY > 0.5
-    if (!movingUp && !movingDown) {
       return false
     }
 
@@ -910,31 +880,36 @@ function App() {
     const others = currentGroup.filter((item) => item.id !== activeDragId)
     const clampedTargetIndex = Math.max(0, Math.min(currentTargetIndex, others.length))
 
-    let nextTargetIndex = null
-
-    if (movingUp && clampedTargetIndex > 0) {
-      const aboveNote = others[clampedTargetIndex - 1]
-      const aboveElement = document.querySelector(`li.note-item[data-note-id="${aboveNote.id}"]`)
-      if (aboveElement) {
-        const aboveRect = aboveElement.getBoundingClientRect()
-        const aboveMiddle = aboveRect.top + aboveRect.height / 2
-        if (draggingBounds.top <= aboveMiddle) {
-          nextTargetIndex = clampedTargetIndex - 1
-        }
+    const dragCenterY = (draggingBounds.top + draggingBounds.bottom) / 2
+    const getMiddle = (targetIndex) => {
+      const item = others[targetIndex]
+      if (!item) {
+        return Number.NaN
       }
-    } else if (movingDown && clampedTargetIndex < others.length) {
-      const belowNote = others[clampedTargetIndex]
-      const belowElement = document.querySelector(`li.note-item[data-note-id="${belowNote.id}"]`)
-      if (belowElement) {
-        const belowRect = belowElement.getBoundingClientRect()
-        const belowMiddle = belowRect.top + belowRect.height / 2
-        if (draggingBounds.bottom >= belowMiddle) {
-          nextTargetIndex = clampedTargetIndex + 1
-        }
+      const element = document.querySelector(`li.note-item[data-note-id="${item.id}"]`)
+      if (!element) {
+        return Number.NaN
       }
+      const rect = element.getBoundingClientRect()
+      return rect.top + rect.height / 2
     }
 
-    if (nextTargetIndex === null) {
+    const upperMiddle = clampedTargetIndex > 0 ? getMiddle(clampedTargetIndex - 1) : Number.NaN
+    const lowerMiddle =
+      clampedTargetIndex < others.length ? getMiddle(clampedTargetIndex) : Number.NaN
+
+    let nextTargetIndex = clampedTargetIndex
+    if (
+      Number.isFinite(upperMiddle) &&
+      dragCenterY < upperMiddle - DRAG_STEP_HYSTERESIS_PX
+    ) {
+      nextTargetIndex = clampedTargetIndex - 1
+    } else if (
+      Number.isFinite(lowerMiddle) &&
+      dragCenterY > lowerMiddle + DRAG_STEP_HYSTERESIS_PX
+    ) {
+      nextTargetIndex = clampedTargetIndex + 1
+    } else {
       return false
     }
 
@@ -982,7 +957,7 @@ function App() {
         return
       }
 
-      const didSetIndicator = setInsertIndicatorByDragBounds(activeTouchDragId, touch.clientY)
+      const didSetIndicator = setInsertIndicatorByDragBounds(activeTouchDragId)
       if (!didSetIndicator) {
         return
       }
@@ -1142,58 +1117,13 @@ function App() {
     if (dataTransfer) {
       dataTransfer.dropEffect = 'move'
     }
-    const didSetIndicator = setInsertIndicatorByDragBounds(activeDragId, event.clientY)
+    const didSetIndicator = setInsertIndicatorByDragBounds(activeDragId)
     if (!didSetIndicator) {
       return
     }
     if (dragMovedId !== activeDragId) {
       setDragMovedId(activeDragId)
     }
-  }
-
-  const handleDropSpacerOver = (event) => {
-    const dataTransfer = event.dataTransfer ?? null
-    const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
-    updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
-    if (!activeDragId || !dropIndicator) {
-      return
-    }
-
-    event.preventDefault()
-    if (dataTransfer) {
-      dataTransfer.dropEffect = 'move'
-    }
-    if (dragMovedId !== activeDragId) {
-      setDragMovedId(activeDragId)
-    }
-  }
-
-  const handleDropByIndicator = async (event) => {
-    event.preventDefault()
-    event.stopPropagation()
-
-    const dataTransfer = event.dataTransfer ?? null
-    const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
-    const indicatorSnapshot = dropIndicator
-    clearDragState()
-    if (!activeDragId) {
-      return
-    }
-
-    if (!indicatorSnapshot) {
-      return
-    }
-
-    const draggingNote = orderedNotesById.get(activeDragId)
-    if (!draggingNote) {
-      return
-    }
-
-    if (indicatorSnapshot.pinned !== Boolean(draggingNote.pinned)) {
-      return
-    }
-
-    await reorderWithinGroup(activeDragId, Boolean(draggingNote.pinned), indicatorSnapshot.index)
   }
 
   const handleDrop = async (targetNote, event) => {
@@ -1391,7 +1321,7 @@ function App() {
           {notes.length === 0 && !notesLoading ? (
             <p className="empty-state">メモがありません</p>
           ) : (
-            <ul className="notes-list" style={{ '--insert-gap': `${insertGapPx}px` }}>
+            <ul className="notes-list">
               {orderedNotes.map((note) => {
                 const isEditing = editId === note.id
                 const isDragging = dragId === note.id
@@ -1431,19 +1361,13 @@ function App() {
                 }
 
               return (
-                <Fragment key={note.id}>
-                  {isInsertBefore ? (
-                    <li
-                      className="note-drop-spacer"
-                      aria-hidden="true"
-                      onDragOver={handleDropSpacerOver}
-                      onDrop={(event) => void handleDropByIndicator(event)}
-                    />
-                  ) : null}
                   <li
+                    key={note.id}
                     className={[
                       'note-item',
                       note.pinned ? 'note-item--pinned' : '',
+                      isInsertBefore ? 'note-item--insert-before' : '',
+                      isInsertAfter ? 'note-item--insert-after' : '',
                       isDragging ? 'note-item--dragging' : '',
                       isTouchDragging ? 'note-item--touch-dragging' : '',
                       isDragFollowing ? 'note-item--drag-follow' : '',
@@ -1537,15 +1461,6 @@ function App() {
                       ) : null}
                     </div>
                   </li>
-                  {isInsertAfter ? (
-                    <li
-                      className="note-drop-spacer"
-                      aria-hidden="true"
-                      onDragOver={handleDropSpacerOver}
-                      onDrop={(event) => void handleDropByIndicator(event)}
-                    />
-                  ) : null}
-                </Fragment>
               )
               })}
             </ul>
