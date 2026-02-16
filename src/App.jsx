@@ -247,7 +247,9 @@ function App() {
   const longPressTimerRef = useRef(null)
   const transparentDragImageRef = useRef(null)
   const dragFollowerRafRef = useRef(0)
+  const dropIndicatorRafRef = useRef(0)
   const pendingDragFollowerRef = useRef({ noteId: '', clientX: 0, clientY: 0 })
+  const pendingDropIndicatorRef = useRef({ noteId: '', clientY: NaN })
   const lastDragFollowerRef = useRef({ noteId: '', clientX: NaN, clientY: NaN })
   const lastDragProbeRef = useRef({ noteId: '', clientY: NaN })
   const dropIndicatorRef = useRef(null)
@@ -325,6 +327,9 @@ function App() {
       }
       if (dragFollowerRafRef.current) {
         window.cancelAnimationFrame(dragFollowerRafRef.current)
+      }
+      if (dropIndicatorRafRef.current) {
+        window.cancelAnimationFrame(dropIndicatorRafRef.current)
       }
       if (typeof window !== 'undefined' && preventTouchScrollRef.current) {
         window.removeEventListener('touchmove', preventTouchScrollRef.current, { capture: true })
@@ -583,7 +588,12 @@ function App() {
       window.cancelAnimationFrame(dragFollowerRafRef.current)
       dragFollowerRafRef.current = 0
     }
+    if (dropIndicatorRafRef.current) {
+      window.cancelAnimationFrame(dropIndicatorRafRef.current)
+      dropIndicatorRafRef.current = 0
+    }
     pendingDragFollowerRef.current = { noteId: '', clientX: 0, clientY: 0 }
+    pendingDropIndicatorRef.current = { noteId: '', clientY: NaN }
     lastDragFollowerRef.current = { noteId: '', clientX: NaN, clientY: NaN }
     lastDragProbeRef.current = { noteId: '', clientY: NaN }
     dropIndicatorRef.current = null
@@ -962,6 +972,30 @@ function App() {
     return true
   }
 
+  const requestInsertIndicatorUpdate = (activeDragId, probeClientY = NaN) => {
+    if (!activeDragId || typeof window === 'undefined') {
+      return
+    }
+
+    pendingDropIndicatorRef.current = { noteId: activeDragId, clientY: probeClientY }
+    if (dropIndicatorRafRef.current) {
+      return
+    }
+
+    dropIndicatorRafRef.current = window.requestAnimationFrame(() => {
+      dropIndicatorRafRef.current = 0
+      const pending = pendingDropIndicatorRef.current
+      if (!pending.noteId) {
+        return
+      }
+      const didSetIndicator = setInsertIndicatorByDragBounds(pending.noteId, pending.clientY)
+      if (!didSetIndicator) {
+        return
+      }
+      setDragMovedId((current) => (current === pending.noteId ? current : pending.noteId))
+    })
+  }
+
   const handleTouchMove = (note, event) => {
     if (!isTouchLayout || editId) {
       return
@@ -987,18 +1021,19 @@ function App() {
         dragMovedId === activeTouchDragId || moveDistance >= TOUCH_DRAG_ACTIVATE_MOVE_PX
 
       if (!hasActivatedDragMove) {
-        dropIndicatorRef.current = null
-        setDropIndicator(null)
+        if (dropIndicatorRafRef.current) {
+          window.cancelAnimationFrame(dropIndicatorRafRef.current)
+          dropIndicatorRafRef.current = 0
+        }
+        pendingDropIndicatorRef.current = { noteId: '', clientY: NaN }
+        if (dropIndicatorRef.current) {
+          dropIndicatorRef.current = null
+          setDropIndicator(null)
+        }
         return
       }
 
-      const didSetIndicator = setInsertIndicatorByDragBounds(activeTouchDragId, touch.clientY)
-      if (!didSetIndicator) {
-        return
-      }
-      if (dragMovedId !== activeTouchDragId) {
-        setDragMovedId(activeTouchDragId)
-      }
+      requestInsertIndicatorUpdate(activeTouchDragId, touch.clientY)
       return
     }
 
