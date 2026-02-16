@@ -1,8 +1,8 @@
-# MemoMe (React + Firebase)
+# MemoMe（React + Firebase）
 
-Memo app that syncs across devices with Google login and Firestore.
+Googleログインと Firestore でデバイス間同期するメモアプリです。
 
-## 1. Local setup
+## 1. ローカルセットアップ
 
 ```bash
 npm install
@@ -10,10 +10,10 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Fill values in `.env.local` from Firebase Console:
-- Firebase project settings -> Your apps -> Web app config
+Firebaseコンソールから `.env.local` に値を設定してください。
+- 「プロジェクト設定」->「マイアプリ」->「ウェブアプリ設定（Web app config）」
 
-Required keys:
+必要なキー:
 - `VITE_FIREBASE_API_KEY`
 - `VITE_FIREBASE_AUTH_DOMAIN`
 - `VITE_FIREBASE_PROJECT_ID`
@@ -21,38 +21,38 @@ Required keys:
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
 
-## 2. Firebase console settings
+## 2. Firebaseコンソール設定
 
-### Authentication
-1. Go to Authentication -> Sign-in method
-2. Enable Google provider
+### 認証設定
+1. 「Authentication」->「Sign-in method」を開く
+2. Google プロバイダを有効化する
 
-### Firestore Database
-1. Create database in production mode
-2. Apply rules from `firestore.rules`:
+### Firestore データベース
+1. 本番モードでデータベースを作成する
+2. `firestore.rules` を適用する:
 
 ```bash
 firebase deploy --only firestore:rules
 ```
 
-No manual collection creation is needed. A `notes` collection is auto-created when the first note is added.
+コレクションを手動作成する必要はありません。最初のメモ追加時に `notes` コレクションが自動作成されます。
 
-## 3. Vercel deploy
+## 3. Vercelデプロイ
 
-1. Push this folder to your GitHub memo repository
-2. Import the repo in Vercel
-3. Add all `VITE_FIREBASE_*` variables in Project Settings -> Environment Variables
-4. Deploy
+1. このフォルダを GitHub のメモ用リポジトリに push する
+2. Vercel でリポジトリをインポートする
+3. 「Project Settings」->「Environment Variables」に `VITE_FIREBASE_*` をすべて設定する
+4. デプロイする
 
-## 4. Install as app (PWA)
+## 4. アプリとしてインストール（PWA）
 
-- Smartphone: Add to Home Screen from browser menu
-- Desktop Chrome/Edge: install from address bar icon or menu
-- Desktop Safari (macOS): Add to Dock
+- スマホ: ブラウザメニューから「ホーム画面に追加」
+- PC（Chrome/Edge）: アドレスバーのインストールアイコン、またはメニューからインストール
+- PC（Safari / macOS）: 「Dockに追加」
 
-## Scripts
+## スクリプト
 
-- `npm run dev`: start local dev server
-- `npm run build`: production build
-- `npm run preview`: preview built app
-- `npm run lint`: run ESLint
+- `npm run dev`: ローカル開発サーバーを起動
+- `npm run build`: 本番ビルドを作成
+- `npm run preview`: ビルド結果をローカルで確認
+- `npm run lint`: ESLint を実行
