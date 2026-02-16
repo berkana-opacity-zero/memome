@@ -878,17 +878,18 @@ function App() {
     if (Number.isFinite(probeClientY)) {
       lastDragProbeRef.current = { noteId: activeDragId, clientY: probeClientY }
     }
-
     const probeDeltaY =
       Number.isFinite(probeClientY) && Number.isFinite(previousProbe)
         ? probeClientY - previousProbe
         : 0
-
-    const movingUp = probeDeltaY < -0.5 || draggingBounds.deltaY < -0.5
-    const movingDown = probeDeltaY > 0.5 || draggingBounds.deltaY > 0.5
-    if (!movingUp && !movingDown) {
+    if (Math.abs(probeDeltaY) < 0.5) {
       return false
     }
+    const movingUp = probeDeltaY < 0
+    const movingDown = probeDeltaY > 0
+
+    const dragCenterY = draggingBounds.top + (draggingBounds.bottom - draggingBounds.top) / 2
+    const EDGE_TRIGGER_EPS_PX = 2
 
     const groupPinned = Boolean(draggingNote.pinned)
     const currentGroup = orderedNotes.filter((item) => Boolean(item.pinned) === groupPinned)
@@ -922,18 +923,22 @@ function App() {
       const aboveElement = document.querySelector(`li.note-item[data-note-id="${aboveNote.id}"]`)
       if (aboveElement) {
         const aboveRect = aboveElement.getBoundingClientRect()
-        const aboveMiddle = aboveRect.top + aboveRect.height / 2
-        if (draggingBounds.top <= aboveMiddle) {
+        // Shift upward when the dragged element's center reaches
+        // the upper boundary of the current drop slot.
+        if (dragCenterY <= aboveRect.bottom + EDGE_TRIGGER_EPS_PX) {
           nextTargetIndex = clampedTargetIndex - 1
         }
       }
-    } else if (movingDown && clampedTargetIndex < others.length) {
+    }
+
+    if (nextTargetIndex === null && movingDown && clampedTargetIndex < others.length) {
       const belowNote = others[clampedTargetIndex]
       const belowElement = document.querySelector(`li.note-item[data-note-id="${belowNote.id}"]`)
       if (belowElement) {
         const belowRect = belowElement.getBoundingClientRect()
-        const belowMiddle = belowRect.top + belowRect.height / 2
-        if (draggingBounds.bottom >= belowMiddle) {
+        // Shift downward when the dragged element's center reaches
+        // the lower boundary of the current drop slot.
+        if (dragCenterY >= belowRect.top - EDGE_TRIGGER_EPS_PX) {
           nextTargetIndex = clampedTargetIndex + 1
         }
       }
