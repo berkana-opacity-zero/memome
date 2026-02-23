@@ -250,7 +250,6 @@ button:disabled {
   display: grid;
   gap: 0.85rem;
   animation: rise 260ms ease-out;
-  cursor: grab;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -320,7 +319,13 @@ button:disabled {
 .note-row {
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
+  gap: 1rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-row {
+    gap: 2rem;
+  }
 }
 
 .note-swipe-hint {
@@ -447,6 +452,25 @@ button:disabled {
   font-weight: 600;
 }
 
+.copy-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.52rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.5);
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 12px 26px -18px rgba(2, 6, 23, 0.9);
+  z-index: 48;
+  pointer-events: none;
+  animation: toast-rise 180ms ease-out;
+}
+
 .empty-state {
   padding: 0;
   color: #475569;
@@ -570,6 +594,12 @@ button:disabled {
   color: #fca5a5;
 }
 
+:root[data-theme='dark'] .copy-toast {
+  background: rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  color: #e2e8f0;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -585,6 +615,18 @@ button:disabled {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes toast-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }
 

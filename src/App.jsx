@@ -32,6 +32,7 @@ const LONG_PRESS_DRAG_MS = 360
 const TOUCH_DRAG_MOVE_THRESHOLD_PX = 10
 const TOUCH_DRAG_ACTIVATE_MOVE_PX = 8
 const INSERT_GAP_PX = 72
+const COPY_TOAST_DURATION_MS = 2200
 const TRANSPARENT_DRAG_PIXEL =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
@@ -79,6 +80,45 @@ function normalizeBody(value) {
     .map((line) => line.trimEnd())
     .join('\n')
     .trim()
+}
+
+function fallbackCopyText(text) {
+  if (typeof document === 'undefined' || !document.body) {
+    return false
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.top = '-9999px'
+  textarea.style.left = '-9999px'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  textarea.setSelectionRange(0, textarea.value.length)
+
+  let copied = false
+  try {
+    copied = document.execCommand('copy')
+  } catch {
+    copied = false
+  }
+
+  document.body.removeChild(textarea)
+  return copied
+}
+
+async function copyTextToClipboard(text) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  if (!fallbackCopyText(text)) {
+    throw new Error('clipboard-unavailable')
+  }
 }
 
 function getSortIndex(note) {
@@ -242,9 +282,11 @@ function App() {
   const [dropIndicator, setDropIndicator] = useState(null)
   const [swipePreview, setSwipePreview] = useState({ noteId: '', direction: '', progress: 0 })
   const [errorMessage, setErrorMessage] = useState('')
+  const [copyToastVisible, setCopyToastVisible] = useState(false)
   const draftInputRef = useRef(null)
   const dragIdRef = useRef('')
   const longPressTimerRef = useRef(null)
+  const copyToastTimerRef = useRef(null)
   const transparentDragImageRef = useRef(null)
   const dragFollowerRafRef = useRef(0)
   const dropIndicatorRafRef = useRef(0)
@@ -324,6 +366,9 @@ function App() {
     return () => {
       if (longPressTimerRef.current) {
         window.clearTimeout(longPressTimerRef.current)
+      }
+      if (copyToastTimerRef.current) {
+        window.clearTimeout(copyToastTimerRef.current)
       }
       if (dragFollowerRafRef.current) {
         window.cancelAnimationFrame(dragFollowerRafRef.current)
@@ -619,6 +664,38 @@ function App() {
     setSwipePreview((current) =>
       current.noteId ? { noteId: '', direction: '', progress: 0 } : current,
     )
+  }
+
+  const handleCopyNoteBody = async (rawBody) => {
+    const body = typeof rawBody === 'string' ? rawBody : ''
+    if (!body) {
+      return
+    }
+
+    try {
+      await copyTextToClipboard(body)
+      if (copyToastTimerRef.current) {
+        window.clearTimeout(copyToastTimerRef.current)
+      }
+      setCopyToastVisible(true)
+      setErrorMessage((current) =>
+        current === 'クリップボードへのコピーに失敗しました。' ? '' : current,
+      )
+      copyToastTimerRef.current = window.setTimeout(() => {
+        setCopyToastVisible(false)
+        copyToastTimerRef.current = null
+      }, COPY_TOAST_DURATION_MS)
+    } catch {
+      setErrorMessage('クリップボードへのコピーに失敗しました。')
+    }
+  }
+
+  const handleNoteRowClick = (note, event) => {
+    if (isTouchLayout || editId || isInteractiveDragTarget(event.target)) {
+      return
+    }
+
+    void handleCopyNoteBody(note.body)
   }
 
   const updateDragFollowerPosition = (noteId, clientX, clientY) => {
@@ -1117,6 +1194,14 @@ function App() {
     const absDeltaX = Math.abs(deltaX)
     const absDeltaY = Math.abs(deltaY)
 
+    if (
+      absDeltaX < TOUCH_DRAG_MOVE_THRESHOLD_PX &&
+      absDeltaY < TOUCH_DRAG_MOVE_THRESHOLD_PX
+    ) {
+      void handleCopyNoteBody(note.body)
+      return
+    }
+
     if (absDeltaX < SWIPE_TRIGGER_PX || absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO) {
       return
     }
@@ -1538,7 +1623,7 @@ function App() {
                         rows={2}
                       />
                     ) : (
-                      <div className="note-row">
+                      <div className="note-row" onClick={(event) => handleNoteRowClick(note, event)}>
                         <p>{renderLinkedText(note.body)}</p>
                         <button
                           type="button"
@@ -1607,6 +1692,11 @@ function App() {
       {!firebaseConfigError && !authLoading && !user ? renderSignIn() : null}
       {!firebaseConfigError && !authLoading && user ? renderNotes() : null}
       {errorMessage ? <p className="error">{errorMessage}</p> : null}
+      {copyToastVisible ? (
+        <p className="copy-toast" role="status" aria-live="polite">
+          コピーしました
+        </p>
+      ) : null}
     </main>
   )
 }
