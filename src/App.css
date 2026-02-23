@@ -3,7 +3,7 @@
   margin: 0 auto;
   padding: 2.25rem 1rem 3rem;
   color: #1f2933;
-  transition: color 180ms ease;
+  transition: color 240ms ease;
 }
 
 html.is-note-dragging,
@@ -52,6 +52,7 @@ a,
   border-radius: 18px;
   box-shadow: 0 16px 42px -30px rgba(13, 38, 76, 0.65);
   backdrop-filter: blur(4px);
+  transition: background-color 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
 }
 
 .setup-card,
@@ -93,6 +94,7 @@ a,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 240ms ease;
 }
 
 .header-avatar {
@@ -102,6 +104,7 @@ a,
   object-fit: cover;
   border: 1px solid #cbd5e1;
   flex: 0 0 auto;
+  transition: border-color 240ms ease;
 }
 
 .header-avatar-fallback {
@@ -112,6 +115,7 @@ a,
   color: #374151;
   font-size: 0.85rem;
   font-weight: 700;
+  transition: background-color 240ms ease, color 240ms ease;
 }
 
 .composer {
@@ -142,7 +146,11 @@ a,
   padding: 0.72rem 0.8rem;
   font: inherit;
   background: #ffffff;
-  transition: border-color 180ms ease, box-shadow 180ms ease;
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background-color 240ms ease,
+    color 240ms ease;
 }
 
 .composer textarea:focus,
@@ -167,7 +175,14 @@ button {
   color: #ffffff;
   background: linear-gradient(120deg, #0f766e, #1d4ed8);
   cursor: pointer;
-  transition: transform 120ms ease, filter 160ms ease, opacity 160ms ease;
+  transition:
+    transform 120ms ease,
+    filter 160ms ease,
+    opacity 160ms ease,
+    color 240ms ease,
+    background-color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease;
 }
 
 button:hover:enabled {
@@ -250,7 +265,11 @@ button:disabled {
   display: grid;
   gap: 0.85rem;
   animation: rise 260ms ease-out;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background-color 240ms ease,
+    color 240ms ease;
 }
 
 .note-item--pinned {
@@ -371,6 +390,7 @@ button:disabled {
   color: #1d4ed8;
   text-decoration: underline;
   text-underline-offset: 0.12em;
+  transition: color 220ms ease;
 }
 
 .note-row a:hover {
@@ -444,19 +464,21 @@ button:disabled {
 .hint {
   color: #475569;
   font-size: 0.9rem;
+  transition: color 240ms ease;
 }
 
 .error {
   margin-top: 0.75rem;
   color: #b91c1c;
   font-weight: 600;
+  transition: color 240ms ease;
 }
 
 .copy-toast {
   position: fixed;
   left: 50%;
-  bottom: 1.25rem;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   margin: 0;
   padding: 0.52rem 0.9rem;
   border-radius: 999px;
@@ -474,6 +496,7 @@ button:disabled {
 .empty-state {
   padding: 0;
   color: #475569;
+  transition: color 240ms ease;
 }
 
 :root[data-theme='dark'] .app-shell {
@@ -621,12 +644,12 @@ button:disabled {
 @keyframes toast-rise {
   from {
     opacity: 0;
-    transform: translate(-50%, 6px);
+    transform: translate(-50%, -44%);
   }
 
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translate(-50%, -50%);
   }
 }
 

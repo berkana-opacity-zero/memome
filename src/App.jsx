@@ -492,7 +492,39 @@ function App() {
   }
 
   const handleToggleTheme = () => {
-    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+    const toggleTheme = () => {
+      setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+    }
+
+    const shouldReduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const canUseViewTransition =
+      !shouldReduceMotion &&
+      typeof document !== 'undefined' &&
+      typeof document.startViewTransition === 'function'
+
+    if (!canUseViewTransition) {
+      toggleTheme()
+      return
+    }
+
+    const rootElement = document.documentElement
+    rootElement.classList.add('is-theme-switching')
+    try {
+      const transition = document.startViewTransition(() => {
+        toggleTheme()
+      })
+
+      void transition.finished
+        .catch(() => { })
+        .finally(() => {
+          rootElement.classList.remove('is-theme-switching')
+        })
+    } catch {
+      toggleTheme()
+      rootElement.classList.remove('is-theme-switching')
+    }
   }
 
   const submitCreate = () => {
