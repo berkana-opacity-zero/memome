@@ -9,7 +9,6 @@
 html.is-note-dragging,
 body.is-note-dragging {
   overscroll-behavior: none;
-  overflow: hidden;
 }
 
 body.is-note-dragging {
@@ -78,6 +77,11 @@ a,
   gap: 1rem;
   min-width: 0;
   width: 100%;
+}
+
+.header-user-row .btn-logout {
+  font-size: 0.86rem;
+  padding: 0.5rem 0.82rem;
 }
 
 .header-user {
@@ -714,8 +718,8 @@ button:disabled {
   }
 
   .header-user-row .btn-logout {
-    font-size: 0.78rem;
-    padding: 0.45rem 0.78rem;
+    font-size: 0.74rem;
+    padding: 0.42rem 0.72rem;
   }
 
   .actions {

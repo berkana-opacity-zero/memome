@@ -32,6 +32,8 @@ const LONG_PRESS_DRAG_MS = 360
 const TOUCH_DRAG_MOVE_THRESHOLD_PX = 10
 const TOUCH_DRAG_ACTIVATE_MOVE_PX = 8
 const INSERT_GAP_PX = 72
+const AUTO_SCROLL_EDGE_PX = 88
+const AUTO_SCROLL_MAX_STEP_PX = 22
 const COPY_TOAST_DURATION_MS = 2200
 const TRANSPARENT_DRAG_PIXEL =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
@@ -290,6 +292,8 @@ function App() {
   const transparentDragImageRef = useRef(null)
   const dragFollowerRafRef = useRef(0)
   const dropIndicatorRafRef = useRef(0)
+  const dragAutoScrollRafRef = useRef(0)
+  const dragAutoScrollRef = useRef({ noteId: '', clientY: NaN })
   const pendingDragFollowerRef = useRef({ noteId: '', clientX: 0, clientY: 0 })
   const pendingDropIndicatorRef = useRef({ noteId: '', clientY: NaN })
   const lastDragFollowerRef = useRef({ noteId: '', clientX: NaN, clientY: NaN })
@@ -375,6 +379,9 @@ function App() {
       }
       if (dropIndicatorRafRef.current) {
         window.cancelAnimationFrame(dropIndicatorRafRef.current)
+      }
+      if (dragAutoScrollRafRef.current) {
+        window.cancelAnimationFrame(dragAutoScrollRafRef.current)
       }
       if (typeof window !== 'undefined' && preventTouchScrollRef.current) {
         window.removeEventListener('touchmove', preventTouchScrollRef.current, { capture: true })
@@ -669,6 +676,11 @@ function App() {
       window.cancelAnimationFrame(dropIndicatorRafRef.current)
       dropIndicatorRafRef.current = 0
     }
+    if (dragAutoScrollRafRef.current) {
+      window.cancelAnimationFrame(dragAutoScrollRafRef.current)
+      dragAutoScrollRafRef.current = 0
+    }
+    dragAutoScrollRef.current = { noteId: '', clientY: NaN }
     pendingDragFollowerRef.current = { noteId: '', clientX: 0, clientY: 0 }
     pendingDropIndicatorRef.current = { noteId: '', clientY: NaN }
     lastDragFollowerRef.current = { noteId: '', clientX: NaN, clientY: NaN }
@@ -847,6 +859,7 @@ function App() {
       clientX: startX,
       clientY: startY,
     }
+    updateAutoScroll(note.id, startY)
     lastDragProbeRef.current = {
       noteId: note.id,
       clientY: startY,
@@ -868,6 +881,7 @@ function App() {
     }
 
     updateDragFollowerPosition(note.id, event.clientX, event.clientY)
+    updateAutoScroll(note.id, event.clientY)
   }
 
   const handleTouchContextMenu = (event) => {
@@ -1105,6 +1119,77 @@ function App() {
     })
   }
 
+  const stopAutoScroll = () => {
+    if (dragAutoScrollRafRef.current) {
+      window.cancelAnimationFrame(dragAutoScrollRafRef.current)
+      dragAutoScrollRafRef.current = 0
+    }
+    dragAutoScrollRef.current = { noteId: '', clientY: NaN }
+  }
+
+  const runAutoScroll = () => {
+    if (dragAutoScrollRafRef.current) {
+      return
+    }
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
+    dragAutoScrollRafRef.current = window.requestAnimationFrame(() => {
+      dragAutoScrollRafRef.current = 0
+
+      const { noteId, clientY } = dragAutoScrollRef.current
+      if (!noteId || !Number.isFinite(clientY)) {
+        return
+      }
+
+      const viewportHeight = window.innerHeight || 0
+      if (viewportHeight <= 0) {
+        return
+      }
+
+      let scrollDelta = 0
+      if (clientY <= AUTO_SCROLL_EDGE_PX) {
+        const ratio = Math.min(1, (AUTO_SCROLL_EDGE_PX - Math.max(0, clientY)) / AUTO_SCROLL_EDGE_PX)
+        scrollDelta = -Math.max(1, Math.round(AUTO_SCROLL_MAX_STEP_PX * ratio * ratio))
+      } else if (clientY >= viewportHeight - AUTO_SCROLL_EDGE_PX) {
+        const distance = Math.max(0, viewportHeight - clientY)
+        const ratio = Math.min(1, (AUTO_SCROLL_EDGE_PX - distance) / AUTO_SCROLL_EDGE_PX)
+        scrollDelta = Math.max(1, Math.round(AUTO_SCROLL_MAX_STEP_PX * ratio * ratio))
+      }
+
+      if (scrollDelta !== 0) {
+        const scrollingElement = document.scrollingElement || document.documentElement
+        const currentTop = window.scrollY || scrollingElement.scrollTop || 0
+        const maxTop = Math.max(0, scrollingElement.scrollHeight - viewportHeight)
+        const nextTop = Math.max(0, Math.min(maxTop, currentTop + scrollDelta))
+
+        if (nextTop !== currentTop) {
+          window.scrollTo(0, nextTop)
+          requestInsertIndicatorUpdate(noteId, clientY)
+        }
+      }
+
+      if (dragAutoScrollRef.current.noteId) {
+        runAutoScroll()
+      }
+    })
+  }
+
+  const updateAutoScroll = (noteId, clientY) => {
+    if (!noteId || !Number.isFinite(clientY)) {
+      stopAutoScroll()
+      return
+    }
+
+    const viewportHeight =
+      typeof window !== 'undefined' && Number.isFinite(window.innerHeight) ? window.innerHeight : 0
+    const boundedY =
+      viewportHeight > 0 ? Math.max(0, Math.min(viewportHeight, clientY)) : Math.max(0, clientY)
+    dragAutoScrollRef.current = { noteId, clientY: boundedY }
+    runAutoScroll()
+  }
+
   const handleTouchMove = (note, event) => {
     if (!isTouchLayout || editId) {
       return
@@ -1124,6 +1209,7 @@ function App() {
     const activeTouchDragId = touchDragId || dragIdRef.current
     if (activeTouchDragId && swipeState.noteId === activeTouchDragId) {
       updateDragFollowerPosition(activeTouchDragId, touch.clientX, touch.clientY)
+      updateAutoScroll(activeTouchDragId, touch.clientY)
 
       const moveDistance = Math.hypot(deltaX, deltaY)
       const hasActivatedDragMove =
@@ -1296,6 +1382,7 @@ function App() {
     const dataTransfer = event.dataTransfer ?? null
     const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
     updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
+    updateAutoScroll(activeDragId, event.clientY)
     if (!activeDragId || activeDragId === note.id) {
       return
     }
@@ -1317,6 +1404,7 @@ function App() {
     const dataTransfer = event.dataTransfer ?? null
     const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
     updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
+    updateAutoScroll(activeDragId, event.clientY)
     if (!activeDragId || !dropIndicator) {
       return
     }
