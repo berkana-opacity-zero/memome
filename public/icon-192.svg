@@ -1,10 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="MemoMe">
-  <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#1d4ed8" />
-      <stop offset="100%" stop-color="#2563eb" />
-    </linearGradient>
-  </defs>
-  <rect x="12" y="12" width="168" height="168" rx="36" fill="url(#bg)" />
-  <path fill="#ffffff" d="M62 56h18l16 24 16-24h18v80h-18V85l-16 24h-1l-16-24v51H62z" />
+  <rect x="12" y="12" width="168" height="168" rx="36" fill="#6ea1ff" />
+  <text
+    x="96"
+    y="103"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-size="110"
+    font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif"
+  >
+    📝
+  </text>
 </svg>
