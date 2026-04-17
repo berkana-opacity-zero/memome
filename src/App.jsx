@@ -732,7 +732,7 @@ function App() {
   }
 
   const handleNoteRowClick = (note, event) => {
-    if (isTouchLayout || editId || isInteractiveDragTarget(event.target)) {
+    if (editId || isInteractiveDragTarget(event.target)) {
       return
     }
 
@@ -1120,6 +1120,9 @@ function App() {
 
     const activeTouchDragId = touchDragId || dragIdRef.current
     if (activeTouchDragId && swipeState.noteId === activeTouchDragId) {
+      if (event.cancelable) {
+        event.preventDefault()
+      }
       updateDragFollowerPosition(activeTouchDragId, touch.clientX, touch.clientY)
       updateAutoScroll(activeTouchDragId, touch.clientY)
 
@@ -1148,6 +1151,10 @@ function App() {
         current.noteId === note.id ? { noteId: '', direction: '', progress: 0 } : current,
       )
       return
+    }
+
+    if (event.cancelable) {
+      event.preventDefault()
     }
 
     const progress = Math.min(absDeltaX / (SWIPE_TRIGGER_PX * 1.2), 1)
