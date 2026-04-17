@@ -207,10 +207,6 @@ button:disabled {
   background: linear-gradient(120deg, #6b7280, #9ca3af);
 }
 
-.btn-edit {
-  background: linear-gradient(120deg, #2563eb, #3b82f6);
-}
-
 .btn-add {
   background: linear-gradient(120deg, #15803d, #22c55e);
 }
@@ -278,13 +274,6 @@ button:disabled {
 
 .note-item--pinned {
   border-color: rgba(251, 191, 36, 0.5);
-}
-
-.note-item--swipe-edit {
-  border-color: rgba(22, 163, 74, 0.55);
-  background-image: linear-gradient(90deg,
-      rgba(22, 163, 74, calc(var(--swipe-progress, 0) * 0.22)),
-      transparent 46%);
 }
 
 .note-item--swipe-delete {
@@ -364,11 +353,6 @@ button:disabled {
   opacity: calc(0.18 + (var(--swipe-progress, 0) * 0.82));
 }
 
-.note-swipe-hint--edit {
-  left: 0.72rem;
-  background: rgba(21, 128, 61, 0.9);
-}
-
 .note-swipe-hint--delete {
   right: 0.72rem;
   background: rgba(185, 28, 28, 0.9);
@@ -401,11 +385,12 @@ button:disabled {
   color: #1d7f91;
 }
 
-.note-row a.note-link-icon {
+.note-link-icon {
   margin-left: 0.28rem;
   width: 2rem;
   height: 2rem;
   min-width: 2rem;
+  padding: 0;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -413,10 +398,12 @@ button:disabled {
   flex: 0 0 auto;
   font-size: 1rem;
   line-height: 1;
+  appearance: none;
   background: #d1d5db;
   color: #374151;
   border: 1px solid #cbd5e1;
   text-decoration: none !important;
+  cursor: pointer;
   transition:
     transform 120ms ease,
     filter 160ms ease,
@@ -425,6 +412,7 @@ button:disabled {
     border-color 240ms ease;
 }
 
+.note-link-icon:hover:enabled,
 .note-row a.note-link-icon:hover {
   color: #374151;
   filter: brightness(1.06);
@@ -435,6 +423,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
+  max-width: 100%;
 }
 
 .note-url-item + .note-url-item {
@@ -442,6 +431,7 @@ button:disabled {
 }
 
 .note-url-text {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -609,13 +599,6 @@ button:disabled {
     0 12px 24px -12px rgba(15, 23, 42, 0.82);
 }
 
-:root[data-theme='dark'] .note-item--swipe-edit {
-  border-color: rgba(74, 222, 128, 0.62);
-  background-image: linear-gradient(90deg,
-      rgba(21, 128, 61, calc(var(--swipe-progress, 0) * 0.28)),
-      transparent 46%);
-}
-
 :root[data-theme='dark'] .note-item--swipe-delete {
   border-color: rgba(248, 113, 113, 0.65);
   background-image: linear-gradient(270deg,
@@ -631,12 +614,13 @@ button:disabled {
   color: #bae6fd;
 }
 
-:root[data-theme='dark'] .note-row a.note-link-icon {
+:root[data-theme='dark'] .note-link-icon {
   color: #cbd5e1;
   background: #334155;
   border-color: #475569;
 }
 
+:root[data-theme='dark'] .note-link-icon:hover:enabled,
 :root[data-theme='dark'] .note-row a.note-link-icon:hover {
   color: #cbd5e1;
 }

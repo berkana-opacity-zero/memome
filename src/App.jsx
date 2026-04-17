@@ -212,7 +212,7 @@ function getErrorMessage(error) {
   return message
 }
 
-function renderLinkedText(text) {
+function renderLinkedText(text, onCopyUrl) {
   const parts = text.split(URL_SPLIT_PATTERN)
 
   return parts.map((part, index) => {
@@ -220,6 +220,15 @@ function renderLinkedText(text) {
       return (
         <span className="note-url-item" key={`url-${index}`}>
           <span className="note-url-text">{part}</span>
+          <button
+            type="button"
+            className="note-link-icon note-link-icon--copy"
+            onClick={() => void onCopyUrl(part)}
+            aria-label={`URLをコピー: ${part}`}
+            title="URLをコピー"
+          >
+            📎
+          </button>
           <a
             className="note-link-icon"
             href={part}
@@ -228,7 +237,7 @@ function renderLinkedText(text) {
             aria-label={`リンクを開く: ${part}`}
             title="リンクを開く"
           >
-            🔗
+            ↗
           </a>
         </span>
       )
@@ -291,13 +300,10 @@ function App() {
   const copyToastTimerRef = useRef(null)
   const transparentDragImageRef = useRef(null)
   const dragFollowerRafRef = useRef(0)
-  const dropIndicatorRafRef = useRef(0)
   const dragAutoScrollRafRef = useRef(0)
   const dragAutoScrollRef = useRef({ noteId: '', clientY: NaN })
   const pendingDragFollowerRef = useRef({ noteId: '', clientX: 0, clientY: 0 })
-  const pendingDropIndicatorRef = useRef({ noteId: '', clientY: NaN })
   const lastDragFollowerRef = useRef({ noteId: '', clientX: NaN, clientY: NaN })
-  const lastDragProbeRef = useRef({ noteId: '', clientY: NaN })
   const dropIndicatorRef = useRef(null)
   const touchScrollLockRef = useRef(false)
   const preventTouchScrollRef = useRef(null)
@@ -376,9 +382,6 @@ function App() {
       }
       if (dragFollowerRafRef.current) {
         window.cancelAnimationFrame(dragFollowerRafRef.current)
-      }
-      if (dropIndicatorRafRef.current) {
-        window.cancelAnimationFrame(dropIndicatorRafRef.current)
       }
       if (dragAutoScrollRafRef.current) {
         window.cancelAnimationFrame(dragAutoScrollRafRef.current)
@@ -672,19 +675,13 @@ function App() {
       window.cancelAnimationFrame(dragFollowerRafRef.current)
       dragFollowerRafRef.current = 0
     }
-    if (dropIndicatorRafRef.current) {
-      window.cancelAnimationFrame(dropIndicatorRafRef.current)
-      dropIndicatorRafRef.current = 0
-    }
     if (dragAutoScrollRafRef.current) {
       window.cancelAnimationFrame(dragAutoScrollRafRef.current)
       dragAutoScrollRafRef.current = 0
     }
     dragAutoScrollRef.current = { noteId: '', clientY: NaN }
     pendingDragFollowerRef.current = { noteId: '', clientX: 0, clientY: 0 }
-    pendingDropIndicatorRef.current = { noteId: '', clientY: NaN }
     lastDragFollowerRef.current = { noteId: '', clientX: NaN, clientY: NaN }
-    lastDragProbeRef.current = { noteId: '', clientY: NaN }
     dropIndicatorRef.current = null
     dragIdRef.current = ''
     setDragId('')
@@ -710,14 +707,14 @@ function App() {
     )
   }
 
-  const handleCopyNoteBody = async (rawBody) => {
-    const body = typeof rawBody === 'string' ? rawBody : ''
-    if (!body) {
+  const handleCopyText = async (rawText) => {
+    const text = typeof rawText === 'string' ? rawText : ''
+    if (!text) {
       return
     }
 
     try {
-      await copyTextToClipboard(body)
+      await copyTextToClipboard(text)
       if (copyToastTimerRef.current) {
         window.clearTimeout(copyToastTimerRef.current)
       }
@@ -739,7 +736,7 @@ function App() {
       return
     }
 
-    void handleCopyNoteBody(note.body)
+    startEdit(note)
   }
 
   const updateDragFollowerPosition = (noteId, clientX, clientY) => {
@@ -818,7 +815,7 @@ function App() {
   }
 
   const handleDragStart = (note, event) => {
-    if (editId || isInteractiveDragTarget(event.target)) {
+    if (editId || note.pinned || isInteractiveDragTarget(event.target)) {
       event.preventDefault()
       return
     }
@@ -860,10 +857,6 @@ function App() {
       clientY: startY,
     }
     updateAutoScroll(note.id, startY)
-    lastDragProbeRef.current = {
-      noteId: note.id,
-      clientY: startY,
-    }
     const dataTransfer = event.dataTransfer ?? null
     if (dataTransfer) {
       dataTransfer.effectAllowed = 'move'
@@ -899,7 +892,7 @@ function App() {
   }
 
   const handleTouchStart = (note, event) => {
-    if (!isTouchLayout || editId || isInteractiveDragTarget(event.target)) {
+    if (!isTouchLayout || editId || note.pinned || isInteractiveDragTarget(event.target)) {
       return
     }
     if (event.touches.length !== 1) {
@@ -951,172 +944,92 @@ function App() {
         clientX: dragStart.startX,
         clientY: dragStart.startY,
       }
-      lastDragProbeRef.current = {
-        noteId: note.id,
-        clientY: dragStart.startY,
-      }
       setSwipePreview({ noteId: '', direction: '', progress: 0 })
     }, LONG_PRESS_DRAG_MS)
   }
 
-  const getDraggingVerticalBounds = (activeDragId) => {
-    if (!activeDragId) {
-      return null
-    }
-
-    const followerState = dragFollower && dragFollower.noteId === activeDragId ? dragFollower : null
-    if (followerState) {
-      const pending = pendingDragFollowerRef.current
-      const latestY =
-        pending.noteId === activeDragId && Number.isFinite(pending.clientY)
-          ? pending.clientY
-          : followerState.currentY
-      const deltaY = latestY - followerState.startY
-      const height = Math.max(1, Math.round(followerState.itemHeight || INSERT_GAP_PX))
-      const top = followerState.itemTop + deltaY
-
-      return { top, bottom: top + height, deltaY }
-    }
-
-    if (typeof document === 'undefined') {
-      return null
-    }
-
-    const draggingElement = document.querySelector(`li.note-item[data-note-id="${activeDragId}"]`)
-    if (!draggingElement) {
-      return null
-    }
-
-    const rect = draggingElement.getBoundingClientRect()
-    return { top: rect.top, bottom: rect.bottom, deltaY: 0 }
-  }
-
-  const setInsertIndicatorByDragBounds = (activeDragId, probeClientY = NaN) => {
+  const updateDropIndicatorFromPoint = (activeDragId, clientX, clientY, explicitTargetId = '') => {
     if (!activeDragId || typeof document === 'undefined') {
       return false
     }
 
     const draggingNote = orderedNotesById.get(activeDragId)
-    if (!draggingNote) {
+    const draggingMeta = noteGroupMetaById.get(activeDragId)
+    if (!draggingNote || !draggingMeta) {
       return false
     }
 
-    const draggingBounds = getDraggingVerticalBounds(activeDragId)
-    if (!draggingBounds) {
+    // ピン留め中のメモはドラッグ対象外
+    if (draggingMeta.pinned) {
       return false
     }
 
-    const previousProbe =
-      lastDragProbeRef.current.noteId === activeDragId ? lastDragProbeRef.current.clientY : NaN
-    if (Number.isFinite(probeClientY)) {
-      lastDragProbeRef.current = { noteId: activeDragId, clientY: probeClientY }
-    }
-    const probeDeltaY =
-      Number.isFinite(probeClientY) && Number.isFinite(previousProbe)
-        ? probeClientY - previousProbe
-        : 0
-    if (Math.abs(probeDeltaY) < 0.5) {
-      return false
-    }
-    const movingUp = probeDeltaY < 0
-    const movingDown = probeDeltaY > 0
+    let targetElement = null
 
-    const dragCenterY = draggingBounds.top + (draggingBounds.bottom - draggingBounds.top) / 2
-    const EDGE_TRIGGER_EPS_PX = 2
+    if (explicitTargetId) {
+      targetElement = document.querySelector(`li.note-item[data-note-id="${explicitTargetId}"]`)
+    } else if (Number.isFinite(clientX) && Number.isFinite(clientY)) {
+      const hit = document.elementFromPoint(clientX, clientY)
+      if (hit) {
+        targetElement = hit.closest('li.note-item')
+      }
+    }
 
-    const groupPinned = Boolean(draggingNote.pinned)
-    const currentGroup = orderedNotes.filter((item) => Boolean(item.pinned) === groupPinned)
-    const fromIndex = currentGroup.findIndex((item) => item.id === activeDragId)
-    if (fromIndex < 0) {
+    if (!targetElement) {
       return false
     }
 
-    const toTargetIndex = (insertIndex) => {
-      const safeInsert = Math.max(0, Math.min(insertIndex, currentGroup.length))
-      return safeInsert > fromIndex ? safeInsert - 1 : safeInsert
+    const targetId = targetElement.dataset.noteId || ''
+    if (!targetId) {
+      return false
     }
 
-    const toInsertIndex = (targetIndex) => {
-      const maxTargetIndex = Math.max(currentGroup.length - 1, 0)
-      const safeTarget = Math.max(0, Math.min(targetIndex, maxTargetIndex))
-      return safeTarget > fromIndex ? safeTarget + 1 : safeTarget
+    const targetMeta = noteGroupMetaById.get(targetId)
+    if (!targetMeta) {
+      return false
     }
+
+    // ピン留め中のメモの上では並べ替えしない
+    if (targetMeta.pinned || targetMeta.pinned !== draggingMeta.pinned) {
+      return false
+    }
+
+    const rect = targetElement.getBoundingClientRect()
+    const midY = rect.top + rect.height / 2
+    const targetIndex = targetMeta.index
+
+    // currentGroup 上の「何番目の隙間か」（0..length）を直接求める
+    const rawInsertIndex = clientY < midY ? targetIndex : targetIndex + 1
 
     const currentIndicator = dropIndicatorRef.current
-    const currentInsertIndex =
-      currentIndicator && currentIndicator.pinned === groupPinned ? currentIndicator.index : fromIndex
-    const currentTargetIndex = toTargetIndex(currentInsertIndex)
-    const others = currentGroup.filter((item) => item.id !== activeDragId)
-    const clampedTargetIndex = Math.max(0, Math.min(currentTargetIndex, others.length))
+    const group = orderedNotes.filter((item) => Boolean(item.pinned) === draggingMeta.pinned)
+    const maxInsertIndex = group.length // 隙間は 0..length の範囲
 
-    let nextTargetIndex = null
+    const previousIndex =
+      currentIndicator && currentIndicator.pinned === draggingMeta.pinned
+        ? currentIndicator.index
+        : draggingMeta.index
 
-    if (movingUp && clampedTargetIndex > 0) {
-      const aboveNote = others[clampedTargetIndex - 1]
-      const aboveElement = document.querySelector(`li.note-item[data-note-id="${aboveNote.id}"]`)
-      if (aboveElement) {
-        const aboveRect = aboveElement.getBoundingClientRect()
-        // Shift upward when the dragged element's center reaches
-        // the upper boundary of the current drop slot.
-        if (dragCenterY <= aboveRect.bottom + EDGE_TRIGGER_EPS_PX) {
-          nextTargetIndex = clampedTargetIndex - 1
-        }
-      }
-    }
+    const clampedRaw = Math.max(0, Math.min(rawInsertIndex, maxInsertIndex))
+    const delta = clampedRaw - previousIndex
+    const limited =
+      delta > 1 ? previousIndex + 1 : delta < -1 ? previousIndex - 1 : clampedRaw
 
-    if (nextTargetIndex === null && movingDown && clampedTargetIndex < others.length) {
-      const belowNote = others[clampedTargetIndex]
-      const belowElement = document.querySelector(`li.note-item[data-note-id="${belowNote.id}"]`)
-      if (belowElement) {
-        const belowRect = belowElement.getBoundingClientRect()
-        // Shift downward when the dragged element's center reaches
-        // the lower boundary of the current drop slot.
-        if (dragCenterY >= belowRect.top - EDGE_TRIGGER_EPS_PX) {
-          nextTargetIndex = clampedTargetIndex + 1
-        }
-      }
-    }
+    const safeInsertIndex = Math.max(0, Math.min(limited, maxInsertIndex))
 
-    if (nextTargetIndex === null) {
+    if (currentIndicator &&
+      currentIndicator.pinned === draggingMeta.pinned &&
+      currentIndicator.index === safeInsertIndex
+    ) {
       return false
     }
 
-    const nextInsertIndex = toInsertIndex(nextTargetIndex)
-    setDropIndicator((current) => {
-      if (current && current.pinned === groupPinned && current.index === nextInsertIndex) {
-        dropIndicatorRef.current = current
-        return current
-      }
-      const nextIndicator = { pinned: groupPinned, index: nextInsertIndex }
-      dropIndicatorRef.current = nextIndicator
-      return nextIndicator
-    })
+    const nextIndicator = { pinned: draggingMeta.pinned, index: safeInsertIndex }
+    dropIndicatorRef.current = nextIndicator
+    setDropIndicator(nextIndicator)
+    setDragMovedId((current) => (current === activeDragId ? current : activeDragId))
 
     return true
-  }
-
-  const requestInsertIndicatorUpdate = (activeDragId, probeClientY = NaN) => {
-    if (!activeDragId || typeof window === 'undefined') {
-      return
-    }
-
-    pendingDropIndicatorRef.current = { noteId: activeDragId, clientY: probeClientY }
-    if (dropIndicatorRafRef.current) {
-      return
-    }
-
-    dropIndicatorRafRef.current = window.requestAnimationFrame(() => {
-      dropIndicatorRafRef.current = 0
-      const pending = pendingDropIndicatorRef.current
-      if (!pending.noteId) {
-        return
-      }
-      const didSetIndicator = setInsertIndicatorByDragBounds(pending.noteId, pending.clientY)
-      if (!didSetIndicator) {
-        return
-      }
-      setDragMovedId((current) => (current === pending.noteId ? current : pending.noteId))
-    })
   }
 
   const stopAutoScroll = () => {
@@ -1166,7 +1079,6 @@ function App() {
 
         if (nextTop !== currentTop) {
           window.scrollTo(0, nextTop)
-          requestInsertIndicatorUpdate(noteId, clientY)
         }
       }
 
@@ -1216,11 +1128,6 @@ function App() {
         dragMovedId === activeTouchDragId || moveDistance >= TOUCH_DRAG_ACTIVATE_MOVE_PX
 
       if (!hasActivatedDragMove) {
-        if (dropIndicatorRafRef.current) {
-          window.cancelAnimationFrame(dropIndicatorRafRef.current)
-          dropIndicatorRafRef.current = 0
-        }
-        pendingDropIndicatorRef.current = { noteId: '', clientY: NaN }
         if (dropIndicatorRef.current) {
           dropIndicatorRef.current = null
           setDropIndicator(null)
@@ -1228,7 +1135,7 @@ function App() {
         return
       }
 
-      requestInsertIndicatorUpdate(activeTouchDragId, touch.clientY)
+      void updateDropIndicatorFromPoint(activeTouchDragId, touch.clientX, touch.clientY)
       return
     }
 
@@ -1236,28 +1143,24 @@ function App() {
       clearLongPressTimer()
     }
 
-    if (
-      absDeltaX < SWIPE_MOVE_START_PX ||
-      absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO
-    ) {
+    if (deltaX >= 0 || absDeltaX < SWIPE_MOVE_START_PX || absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO) {
       setSwipePreview((current) =>
         current.noteId === note.id ? { noteId: '', direction: '', progress: 0 } : current,
       )
       return
     }
 
-    const direction = deltaX > 0 ? 'edit' : 'delete'
     const progress = Math.min(absDeltaX / (SWIPE_TRIGGER_PX * 1.2), 1)
 
     setSwipePreview((current) => {
       if (
         current.noteId === note.id &&
-        current.direction === direction &&
+        current.direction === 'delete' &&
         Math.abs(current.progress - progress) < 0.02
       ) {
         return current
       }
-      return { noteId: note.id, direction, progress }
+      return { noteId: note.id, direction: 'delete', progress }
     })
   }
 
@@ -1316,16 +1219,15 @@ function App() {
       absDeltaX < TOUCH_DRAG_MOVE_THRESHOLD_PX &&
       absDeltaY < TOUCH_DRAG_MOVE_THRESHOLD_PX
     ) {
-      void handleCopyNoteBody(note.body)
-      return
-    }
-
-    if (absDeltaX < SWIPE_TRIGGER_PX || absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO) {
-      return
-    }
-
-    if (deltaX > 0) {
       startEdit(note)
+      return
+    }
+
+    if (
+      deltaX >= 0 ||
+      absDeltaX < SWIPE_TRIGGER_PX ||
+      absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO
+    ) {
       return
     }
 
@@ -1383,7 +1285,7 @@ function App() {
     const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
     updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
     updateAutoScroll(activeDragId, event.clientY)
-    if (!activeDragId || activeDragId === note.id) {
+    if (!activeDragId) {
       return
     }
 
@@ -1391,13 +1293,7 @@ function App() {
     if (dataTransfer) {
       dataTransfer.dropEffect = 'move'
     }
-    const didSetIndicator = setInsertIndicatorByDragBounds(activeDragId, event.clientY)
-    if (!didSetIndicator) {
-      return
-    }
-    if (dragMovedId !== activeDragId) {
-      setDragMovedId(activeDragId)
-    }
+    void updateDropIndicatorFromPoint(activeDragId, event.clientX, event.clientY, note.id)
   }
 
   const handleDropSpacerOver = (event) => {
@@ -1483,7 +1379,7 @@ function App() {
 
     const targetPinned = Boolean(targetNote.pinned)
     if (Boolean(draggingNote.pinned) !== targetPinned) {
-      setErrorMessage('ピン留め中のメモと通常メモは別グループで並び替えてください。')
+      // ピン留め中のメモと通常メモはドラッグ&ドロップで混在させない
       return
     }
 
@@ -1696,7 +1592,6 @@ function App() {
                       isDragging ? 'note-item--dragging' : '',
                       isTouchDragging ? 'note-item--touch-dragging' : '',
                       isDragFollowing ? 'note-item--drag-follow' : '',
-                      swipeHint && swipeHint.direction === 'edit' ? 'note-item--swipe-edit' : '',
                       swipeHint && swipeHint.direction === 'delete'
                         ? 'note-item--swipe-delete'
                         : '',
@@ -1705,7 +1600,7 @@ function App() {
                       .join(' ')}
                     data-note-id={note.id}
                     style={Object.keys(itemStyle).length > 0 ? itemStyle : undefined}
-                    draggable={!isEditing && !isTouchLayout}
+                    draggable={!isEditing && !isTouchLayout && !note.pinned}
                     onDragStart={(event) => handleDragStart(note, event)}
                     onDrag={(event) => handleDrag(note, event)}
                     onDragOver={(event) => handleDragOver(note, event)}
@@ -1725,12 +1620,10 @@ function App() {
                       <div
                         className={[
                           'note-swipe-hint',
-                          swipeHint.direction === 'edit'
-                            ? 'note-swipe-hint--edit'
-                            : 'note-swipe-hint--delete',
+                          'note-swipe-hint--delete',
                         ].join(' ')}
                       >
-                        {swipeHint.direction === 'edit' ? '→ 編集' : '← 削除'}
+                        ← 削除
                       </div>
                     ) : null}
                     {isEditing ? (
@@ -1744,7 +1637,7 @@ function App() {
                       />
                     ) : (
                       <div className="note-row" onClick={(event) => handleNoteRowClick(note, event)}>
-                        <p>{renderLinkedText(note.body)}</p>
+                        <p>{renderLinkedText(note.body, handleCopyText)}</p>
                         <button
                           type="button"
                           className={`pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
@@ -1762,18 +1655,18 @@ function App() {
                         <div className="actions">
                           {isEditing ? (
                             <>
-                              <button type="button" onClick={() => void handleUpdate(note.id, editBody)} disabled={!canSaveEdit}>
+                              <button
+                                type="button"
+                                onClick={() => void handleUpdate(note.id, editBody)}
+                                disabled={!canSaveEdit}
+                              >
                                 保存
                               </button>
                               <button type="button" className="btn-logout" onClick={cancelEdit}>
                                 キャンセル
                               </button>
                             </>
-                          ) : (
-                            <button type="button" className="btn-edit" onClick={() => startEdit(note)}>
-                              編集
-                            </button>
-                          )}
+                          ) : null}
                           {!isTouchLayout ? (
                             <button
                               type="button"
