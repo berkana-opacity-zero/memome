@@ -892,7 +892,7 @@ function App() {
   }
 
   const handleTouchStart = (note, event) => {
-    if (!isTouchLayout || editId || note.pinned || isInteractiveDragTarget(event.target)) {
+    if (editId || isInteractiveDragTarget(event.target)) {
       return
     }
     if (event.touches.length !== 1) {
@@ -913,7 +913,7 @@ function App() {
 
     clearLongPressTimer()
     longPressTimerRef.current = window.setTimeout(() => {
-      if (swipeRef.current.noteId !== note.id || editId) {
+      if (swipeRef.current.noteId !== note.id || editId || note.pinned) {
         return
       }
       const dragStart = swipeRef.current
@@ -1103,7 +1103,7 @@ function App() {
   }
 
   const handleTouchMove = (note, event) => {
-    if (!isTouchLayout || editId) {
+    if (editId) {
       return
     }
 
@@ -1174,7 +1174,7 @@ function App() {
   const handleTouchEnd = (note, event) => {
     clearLongPressTimer()
 
-    if (!isTouchLayout || editId) {
+    if (editId) {
       clearDragState()
       clearSwipeState()
       return
