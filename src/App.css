@@ -359,20 +359,44 @@ button:disabled {
   background: rgba(185, 28, 28, 0.9);
 }
 
-.note-row p {
+.note-body {
   margin: 0;
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
   line-height: 1.45;
+}
+
+.note-row,
+.note-body,
+.note-body * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.note-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.note-line-content {
+  flex: 1;
+  min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.note-row,
-.note-row p,
-.note-row p * {
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
+.note-line--empty .note-line-content {
+  min-height: 1.45em;
+}
+
+.note-line-placeholder {
+  display: inline-block;
 }
 
 .note-row a {
@@ -427,13 +451,13 @@ button:disabled {
   max-width: 100%;
 }
 
-.note-url-item + .note-url-item {
-  margin-top: 0.3rem;
-}
-
 .note-url-text {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.note-line-copy-button {
+  margin-left: 0;
 }
 
 .note-footer {
@@ -796,9 +820,7 @@ button:disabled {
     min-height: 2.35rem;
   }
 
-  .note-row p {
-    display: grid;
-    align-content: center;
+  .note-body {
     min-height: 2.35rem;
   }
 

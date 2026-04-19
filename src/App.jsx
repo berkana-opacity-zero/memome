@@ -212,18 +212,18 @@ function getErrorMessage(error) {
   return message
 }
 
-function renderLinkedText(text, onCopyUrl) {
+function renderLinkedText(text, onCopyText, keyPrefix) {
   const parts = text.split(URL_SPLIT_PATTERN)
 
   return parts.map((part, index) => {
     if (STRICT_URL_PATTERN.test(part)) {
       return (
-        <span className="note-url-item" key={`url-${index}`}>
+        <span className="note-url-item" key={`${keyPrefix}-url-${index}`}>
           <span className="note-url-text">{part}</span>
           <button
             type="button"
             className="note-link-icon note-link-icon--copy"
-            onClick={() => void onCopyUrl(part)}
+            onClick={() => void onCopyText(part)}
             aria-label={`URLをコピー: ${part}`}
             title="URLをコピー"
           >
@@ -247,18 +247,41 @@ function renderLinkedText(text, onCopyUrl) {
       return null
     }
 
-    const prevPart = parts[index - 1] ?? ''
-    const nextPart = parts[index + 1] ?? ''
-    const isUrlSeparator =
-      STRICT_URL_PATTERN.test(prevPart) &&
-      STRICT_URL_PATTERN.test(nextPart) &&
-      part.trim() === ''
+    return <Fragment key={`${keyPrefix}-txt-${index}`}>{part}</Fragment>
+  })
+}
 
-    if (isUrlSeparator) {
-      return <Fragment key={`sep-${index}`}>{'\n'}</Fragment>
-    }
+function renderNoteBody(text, onCopyText) {
+  const lines = text.split('\n')
 
-    return <span key={`txt-${index}`}>{part}</span>
+  return lines.map((line, index) => {
+    const keyPrefix = `line-${index}`
+    const isEmptyLine = line.length === 0
+
+    return (
+      <span className={`note-line${isEmptyLine ? ' note-line--empty' : ''}`} key={keyPrefix}>
+        <span className="note-line-content">
+          {isEmptyLine ? (
+            <span className="note-line-placeholder" aria-hidden="true">
+              {'\u00a0'}
+            </span>
+          ) : (
+            renderLinkedText(line, onCopyText, keyPrefix)
+          )}
+        </span>
+        {isEmptyLine ? null : (
+          <button
+            type="button"
+            className="note-link-icon note-link-icon--copy note-line-copy-button"
+            onClick={() => void onCopyText(line)}
+            aria-label="この行をコピー"
+            title="この行をコピー"
+          >
+            📎
+          </button>
+        )}
+      </span>
+    )
   })
 }
 
@@ -1644,7 +1667,7 @@ function App() {
                       />
                     ) : (
                       <div className="note-row" onClick={(event) => handleNoteRowClick(note, event)}>
-                        <p>{renderLinkedText(note.body, handleCopyText)}</p>
+                        <div className="note-body">{renderNoteBody(note.body, handleCopyText)}</div>
                         <button
                           type="button"
                           className={`pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
