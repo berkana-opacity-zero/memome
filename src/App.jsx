@@ -247,7 +247,32 @@ function renderLinkedText(text, onCopyText, keyPrefix) {
       return null
     }
 
-    return <Fragment key={`${keyPrefix}-txt-${index}`}>{part}</Fragment>
+    const leadingWhitespace = part.match(/^\s+/)?.[0] ?? ''
+    const trailingWhitespace = part.match(/\s+$/)?.[0] ?? ''
+    const visibleText = part.slice(leadingWhitespace.length, part.length - trailingWhitespace.length)
+
+    if (!visibleText) {
+      return <Fragment key={`${keyPrefix}-space-${index}`}>{part}</Fragment>
+    }
+
+    return (
+      <Fragment key={`${keyPrefix}-txt-${index}`}>
+        {leadingWhitespace}
+        <span className="note-text-item">
+          <span className="note-text-content">{visibleText}</span>
+          <button
+            type="button"
+            className="note-link-icon note-link-icon--copy"
+            onClick={() => void onCopyText(visibleText)}
+            aria-label="テキストをコピー"
+            title="テキストをコピー"
+          >
+            📎
+          </button>
+        </span>
+        {trailingWhitespace}
+      </Fragment>
+    )
   })
 }
 
@@ -269,17 +294,6 @@ function renderNoteBody(text, onCopyText) {
             renderLinkedText(line, onCopyText, keyPrefix)
           )}
         </span>
-        {isEmptyLine ? null : (
-          <button
-            type="button"
-            className="note-link-icon note-link-icon--copy note-line-copy-button"
-            onClick={() => void onCopyText(line)}
-            aria-label="この行をコピー"
-            title="この行をコピー"
-          >
-            📎
-          </button>
-        )}
       </span>
     )
   })
