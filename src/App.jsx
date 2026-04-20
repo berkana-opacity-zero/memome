@@ -276,7 +276,77 @@ function renderLinkedText(text, onCopyText, keyPrefix) {
   })
 }
 
-function renderNoteBody(text, onCopyText) {
+function renderTouchLinkedText(text, onCopyText, keyPrefix) {
+  const parts = text.split(URL_SPLIT_PATTERN)
+  const items = parts.map((part, index) => {
+    if (STRICT_URL_PATTERN.test(part)) {
+      return (
+        <span className="note-touch-item" key={`${keyPrefix}-url-${index}`}>
+          <span className="note-touch-text note-touch-text--url">{part}</span>
+          <span className="note-touch-actions">
+            <button
+              type="button"
+              className="note-link-icon note-link-icon--copy"
+              onClick={() => void onCopyText(part)}
+              aria-label={`URLをコピー: ${part}`}
+              title="URLをコピー"
+            >
+              📎
+            </button>
+            <a
+              className="note-link-icon"
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`リンクを開く: ${part}`}
+              title="リンクを開く"
+            >
+              ↗
+            </a>
+          </span>
+        </span>
+      )
+    }
+
+    if (!part) {
+      return null
+    }
+
+    const leadingWhitespace = part.match(/^\s+/)?.[0] ?? ''
+    const trailingWhitespace = part.match(/\s+$/)?.[0] ?? ''
+    const visibleText = part.slice(leadingWhitespace.length, part.length - trailingWhitespace.length)
+
+    if (!visibleText) {
+      return null
+    }
+
+    return (
+      <span className="note-touch-item" key={`${keyPrefix}-txt-${index}`}>
+        <span className="note-touch-text">{part}</span>
+        <span className="note-touch-actions">
+          <button
+            type="button"
+            className="note-link-icon note-link-icon--copy"
+            onClick={() => void onCopyText(visibleText)}
+            aria-label="テキストをコピー"
+            title="テキストをコピー"
+          >
+            📎
+          </button>
+          <span className="note-link-icon note-link-icon--placeholder" aria-hidden="true" />
+        </span>
+      </span>
+    )
+  })
+
+  return items.some(Boolean) ? items : (
+    <span className="note-line-placeholder" aria-hidden="true">
+      {'\u00a0'}
+    </span>
+  )
+}
+
+function renderNoteBody(text, onCopyText, isTouchLayout) {
   const lines = text.split('\n')
 
   return lines.map((line, index) => {
@@ -291,7 +361,9 @@ function renderNoteBody(text, onCopyText) {
               {'\u00a0'}
             </span>
           ) : (
-            renderLinkedText(line, onCopyText, keyPrefix)
+            isTouchLayout
+              ? renderTouchLinkedText(line, onCopyText, keyPrefix)
+              : renderLinkedText(line, onCopyText, keyPrefix)
           )}
         </span>
       </span>
@@ -1183,7 +1255,7 @@ function App() {
       clearLongPressTimer()
     }
 
-    if (deltaX >= 0 || absDeltaX < SWIPE_MOVE_START_PX || absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO) {
+    if (absDeltaX < SWIPE_MOVE_START_PX || absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO) {
       setSwipePreview((current) =>
         current.noteId === note.id ? { noteId: '', direction: '', progress: 0 } : current,
       )
@@ -1195,16 +1267,17 @@ function App() {
     }
 
     const progress = Math.min(absDeltaX / (SWIPE_TRIGGER_PX * 1.2), 1)
+    const direction = deltaX > 0 ? (note.pinned ? 'unpin' : 'pin') : 'delete'
 
     setSwipePreview((current) => {
       if (
         current.noteId === note.id &&
-        current.direction === 'delete' &&
+        current.direction === direction &&
         Math.abs(current.progress - progress) < 0.02
       ) {
         return current
       }
-      return { noteId: note.id, direction: 'delete', progress }
+      return { noteId: note.id, direction, progress }
     })
   }
 
@@ -1268,10 +1341,14 @@ function App() {
     }
 
     if (
-      deltaX >= 0 ||
       absDeltaX < SWIPE_TRIGGER_PX ||
       absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO
     ) {
+      return
+    }
+
+    if (deltaX > 0) {
+      void handleTogglePin(note)
       return
     }
 
@@ -1607,6 +1684,7 @@ function App() {
                 const swipeHint =
                   swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
                 const showActions = isEditing || !isTouchLayout
+                const showPinButton = !isTouchLayout
                 const itemStyle = {}
                 if (swipeHint) {
                   itemStyle['--swipe-progress'] = swipeHint.progress
@@ -1638,7 +1716,11 @@ function App() {
                       isDragFollowing ? 'note-item--drag-follow' : '',
                       swipeHint && swipeHint.direction === 'delete'
                         ? 'note-item--swipe-delete'
-                        : '',
+                        : swipeHint && swipeHint.direction === 'pin'
+                          ? 'note-item--swipe-pin'
+                          : swipeHint && swipeHint.direction === 'unpin'
+                            ? 'note-item--swipe-unpin'
+                            : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -1664,10 +1746,18 @@ function App() {
                       <div
                         className={[
                           'note-swipe-hint',
-                          'note-swipe-hint--delete',
+                          swipeHint.direction === 'delete'
+                            ? 'note-swipe-hint--delete'
+                            : swipeHint.direction === 'pin'
+                              ? 'note-swipe-hint--pin'
+                              : 'note-swipe-hint--unpin',
                         ].join(' ')}
                       >
-                        ← 削除
+                        {swipeHint.direction === 'delete'
+                          ? '← 削除'
+                          : swipeHint.direction === 'pin'
+                            ? '→ ピン留め'
+                            : '→ ピン留め解除'}
                       </div>
                     ) : null}
                     {isEditing ? (
@@ -1681,16 +1771,18 @@ function App() {
                       />
                     ) : (
                       <div className="note-row" onClick={(event) => handleNoteRowClick(note, event)}>
-                        <div className="note-body">{renderNoteBody(note.body, handleCopyText)}</div>
-                        <button
-                          type="button"
-                          className={`pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
-                          onClick={() => handleTogglePin(note)}
-                          aria-label={note.pinned ? 'ピン留め解除' : 'ピン留め'}
-                          title={note.pinned ? 'ピン留め解除' : 'ピン留め'}
-                        >
-                          📌
-                        </button>
+                        <div className="note-body">{renderNoteBody(note.body, handleCopyText, isTouchLayout)}</div>
+                        {showPinButton ? (
+                          <button
+                            type="button"
+                            className={`pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
+                            onClick={() => handleTogglePin(note)}
+                            aria-label={note.pinned ? 'ピン留め解除' : 'ピン留め'}
+                            title={note.pinned ? 'ピン留め解除' : 'ピン留め'}
+                          >
+                            📌
+                          </button>
+                        ) : null}
                       </div>
                     )}
 

@@ -274,13 +274,28 @@ button:disabled {
 }
 
 .note-item--pinned {
-  border-color: rgba(251, 191, 36, 0.5);
+  border-color: rgba(245, 158, 11, 0.34);
+  background: rgba(255, 249, 235, 0.94);
 }
 
 .note-item--swipe-delete {
   border-color: rgba(220, 38, 38, 0.55);
   background-image: linear-gradient(270deg,
       rgba(220, 38, 38, calc(var(--swipe-progress, 0) * 0.22)),
+      transparent 46%);
+}
+
+.note-item--swipe-pin {
+  border-color: rgba(217, 119, 6, 0.45);
+  background-image: linear-gradient(90deg,
+      rgba(245, 158, 11, calc(var(--swipe-progress, 0) * 0.18)),
+      transparent 46%);
+}
+
+.note-item--swipe-unpin {
+  border-color: rgba(100, 116, 139, 0.5);
+  background-image: linear-gradient(90deg,
+      rgba(148, 163, 184, calc(var(--swipe-progress, 0) * 0.18)),
       transparent 46%);
 }
 
@@ -359,6 +374,19 @@ button:disabled {
   background: rgba(185, 28, 28, 0.9);
 }
 
+.note-swipe-hint--pin,
+.note-swipe-hint--unpin {
+  left: 0.72rem;
+}
+
+.note-swipe-hint--pin {
+  background: rgba(180, 83, 9, 0.88);
+}
+
+.note-swipe-hint--unpin {
+  background: rgba(71, 85, 105, 0.88);
+}
+
 .note-body {
   margin: 0;
   flex: 1;
@@ -389,6 +417,33 @@ button:disabled {
   min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.note-touch-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-start;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.note-touch-item + .note-touch-item {
+  margin-top: 0.38rem;
+}
+
+.note-touch-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note-touch-actions {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.28rem;
+  flex: 0 0 auto;
+  min-width: calc(4rem + 0.28rem);
 }
 
 .note-text-item {
@@ -466,6 +521,11 @@ button:disabled {
 .note-url-text {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.note-link-icon--placeholder {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .note-footer {
@@ -571,6 +631,11 @@ button:disabled {
   box-shadow: 0 20px 48px -34px rgba(2, 6, 23, 0.82);
 }
 
+:root[data-theme='dark'] .note-item--pinned {
+  background: rgba(40, 50, 66, 1);
+  border-color: rgba(250, 204, 21, 0.26);
+}
+
 :root[data-theme='dark'] .theme-toggle {
   color: #cbd5e1;
   background: #334155;
@@ -636,6 +701,20 @@ button:disabled {
   border-color: rgba(248, 113, 113, 0.65);
   background-image: linear-gradient(270deg,
       rgba(220, 38, 38, calc(var(--swipe-progress, 0) * 0.3)),
+      transparent 46%);
+}
+
+:root[data-theme='dark'] .note-item--swipe-pin {
+  border-color: rgba(251, 191, 36, 0.42);
+  background-image: linear-gradient(90deg,
+      rgba(245, 158, 11, calc(var(--swipe-progress, 0) * 0.24)),
+      transparent 46%);
+}
+
+:root[data-theme='dark'] .note-item--swipe-unpin {
+  border-color: rgba(148, 163, 184, 0.44);
+  background-image: linear-gradient(90deg,
+      rgba(148, 163, 184, calc(var(--swipe-progress, 0) * 0.2)),
       transparent 46%);
 }
 
@@ -832,8 +911,17 @@ button:disabled {
     min-height: 2.35rem;
   }
 
-  .note-url-item {
+  .note-line {
+    width: 100%;
+  }
+
+  .note-line-content {
     display: flex;
-    max-width: 100%;
+    flex-direction: column;
+    gap: 0.38rem;
+  }
+
+  .note-touch-item + .note-touch-item {
+    margin-top: 0;
   }
 }
