@@ -1,10 +1,9 @@
-const CACHE_VERSION = 'memome-pwa-v1'
+const CACHE_VERSION = 'memome-pwa-v2'
 const APP_SHELL_FILES = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/icon-192.svg',
-  '/icon-512.svg',
+  '/icon-memo.svg',
 ]
 
 self.addEventListener('install', (event) => {
