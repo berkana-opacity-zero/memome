@@ -28,6 +28,9 @@ const TOUCH_LAYOUT_QUERY = '(hover: none) and (pointer: coarse)'
 const SWIPE_TRIGGER_PX = 72
 const SWIPE_DIRECTION_RATIO = 1.25
 const SWIPE_MOVE_START_PX = 14
+const SWIPE_RUBBER_BAND_START_PX = 112
+const SWIPE_RUBBER_BAND_RATIO = 0.35
+const SWIPE_SETTLE_MS = 280
 const LONG_PRESS_DRAG_MS = 360
 const TOUCH_DRAG_MOVE_THRESHOLD_PX = 10
 const TOUCH_DRAG_ACTIVATE_MOVE_PX = 8
@@ -212,6 +215,84 @@ function getErrorMessage(error) {
   return message
 }
 
+function Icon({ children, size = 16, filled = false }) {
+  return (
+    <svg
+      className="ui-icon"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  )
+}
+
+function PaperclipIcon() {
+  return (
+    <Icon>
+      <path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551" />
+    </Icon>
+  )
+}
+
+function ExternalLinkIcon() {
+  return (
+    <Icon>
+      <path d="M7 17 17 7" />
+      <path d="M7 7h10v10" />
+    </Icon>
+  )
+}
+
+function PinIcon({ filled = false, size = 16 }) {
+  return (
+    <Icon filled={filled} size={size}>
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </Icon>
+  )
+}
+
+function PinOffIcon({ size = 16 }) {
+  return (
+    <Icon size={size}>
+      <path d="M12 17v5" />
+      <path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89" />
+      <path d="m2 2 20 20" />
+      <path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11" />
+    </Icon>
+  )
+}
+
+function TrashIcon({ size = 16 }) {
+  return (
+    <Icon size={size}>
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    </Icon>
+  )
+}
+
+// 指の移動量からカードの表示位置を求める（一定以上はゴムのように抵抗をつける）
+function getSwipeOffset(deltaX) {
+  const distance = Math.max(0, Math.abs(deltaX) - SWIPE_MOVE_START_PX)
+  const eased =
+    distance <= SWIPE_RUBBER_BAND_START_PX
+      ? distance
+      : SWIPE_RUBBER_BAND_START_PX +
+        (distance - SWIPE_RUBBER_BAND_START_PX) * SWIPE_RUBBER_BAND_RATIO
+  return Math.round(Math.sign(deltaX) * eased)
+}
+
 function renderLinkedText(text, onCopyText, keyPrefix) {
   const parts = text.split(URL_SPLIT_PATTERN)
 
@@ -227,7 +308,7 @@ function renderLinkedText(text, onCopyText, keyPrefix) {
             aria-label={`URLをコピー: ${part}`}
             title="URLをコピー"
           >
-            📎
+            <PaperclipIcon />
           </button>
           <a
             className="note-link-icon"
@@ -237,7 +318,7 @@ function renderLinkedText(text, onCopyText, keyPrefix) {
             aria-label={`リンクを開く: ${part}`}
             title="リンクを開く"
           >
-            ↗
+            <ExternalLinkIcon />
           </a>
         </span>
       )
@@ -267,7 +348,7 @@ function renderLinkedText(text, onCopyText, keyPrefix) {
             aria-label="テキストをコピー"
             title="テキストをコピー"
           >
-            📎
+            <PaperclipIcon />
           </button>
         </span>
         {trailingWhitespace}
@@ -281,7 +362,7 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
   const items = parts.map((part, index) => {
     if (STRICT_URL_PATTERN.test(part)) {
       return (
-        <span className="note-touch-item" key={`${keyPrefix}-url-${index}`}>
+        <span className="note-touch-item note-touch-item--url" key={`${keyPrefix}-url-${index}`}>
           <span className="note-touch-text note-touch-text--url">{part}</span>
           <span className="note-touch-actions">
             <button
@@ -291,7 +372,7 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
               aria-label={`URLをコピー: ${part}`}
               title="URLをコピー"
             >
-              📎
+              <PaperclipIcon />
             </button>
             <a
               className="note-link-icon"
@@ -301,7 +382,7 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
               aria-label={`リンクを開く: ${part}`}
               title="リンクを開く"
             >
-              ↗
+              <ExternalLinkIcon />
             </a>
           </span>
         </span>
@@ -331,7 +412,7 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
             aria-label="テキストをコピー"
             title="テキストをコピー"
           >
-            📎
+            <PaperclipIcon />
           </button>
           <span className="note-link-icon note-link-icon--placeholder" aria-hidden="true" />
         </span>
@@ -352,9 +433,17 @@ function renderNoteBody(text, onCopyText, isTouchLayout) {
   return lines.map((line, index) => {
     const keyPrefix = `line-${index}`
     const isEmptyLine = line.length === 0
+    const hasUrl = !isEmptyLine && /https?:\/\/\S/i.test(line)
+    const lineClassName = [
+      'note-line',
+      isEmptyLine ? 'note-line--empty' : '',
+      hasUrl ? 'note-line--url' : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
 
     return (
-      <span className={`note-line${isEmptyLine ? ' note-line--empty' : ''}`} key={keyPrefix}>
+      <span className={lineClassName} key={keyPrefix}>
         <span className="note-line-content">
           {isEmptyLine ? (
             <span className="note-line-placeholder" aria-hidden="true">
@@ -400,10 +489,18 @@ function App() {
   const [dragFollower, setDragFollower] = useState(null)
   const [insertGapPx, setInsertGapPx] = useState(INSERT_GAP_PX)
   const [dropIndicator, setDropIndicator] = useState(null)
-  const [swipePreview, setSwipePreview] = useState({ noteId: '', direction: '', progress: 0 })
+  const [swipePreview, setSwipePreview] = useState({
+    noteId: '',
+    direction: '',
+    progress: 0,
+    offset: 0,
+  })
+  const [swipeSettleId, setSwipeSettleId] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [copyToastVisible, setCopyToastVisible] = useState(false)
   const draftInputRef = useRef(null)
+  const notesListRef = useRef(null)
+  const swipeSettleTimerRef = useRef(null)
   const dragIdRef = useRef('')
   const longPressTimerRef = useRef(null)
   const copyToastTimerRef = useRef(null)
@@ -488,6 +585,9 @@ function App() {
       }
       if (copyToastTimerRef.current) {
         window.clearTimeout(copyToastTimerRef.current)
+      }
+      if (swipeSettleTimerRef.current) {
+        window.clearTimeout(swipeSettleTimerRef.current)
       }
       if (dragFollowerRafRef.current) {
         window.cancelAnimationFrame(dragFollowerRafRef.current)
@@ -812,8 +912,20 @@ function App() {
       itemHeight: 0,
     }
     setSwipePreview((current) =>
-      current.noteId ? { noteId: '', direction: '', progress: 0 } : current,
+      current.noteId ? { noteId: '', direction: '', progress: 0, offset: 0 } : current,
     )
+  }
+
+  // 指を離したあと、カードが元の位置へなめらかに戻るアニメーションの間だけ印をつける
+  const settleSwipe = (noteId) => {
+    if (swipeSettleTimerRef.current) {
+      window.clearTimeout(swipeSettleTimerRef.current)
+    }
+    setSwipeSettleId(noteId)
+    swipeSettleTimerRef.current = window.setTimeout(() => {
+      setSwipeSettleId('')
+      swipeSettleTimerRef.current = null
+    }, SWIPE_SETTLE_MS)
   }
 
   const handleCopyText = async (rawText) => {
@@ -943,7 +1055,7 @@ function App() {
     dragIdRef.current = note.id
     setDragId(note.id)
     setDragMovedId('')
-    setInsertGapPx(Math.max(INSERT_GAP_PX, Math.round(targetRect.height)))
+    setInsertGapPx(Math.round(targetRect.height) || INSERT_GAP_PX)
     setDragFollower({
       noteId: note.id,
       startX,
@@ -1031,7 +1143,7 @@ function App() {
       setDragId(note.id)
       setTouchDragId(note.id)
       setDragMovedId('')
-      setInsertGapPx(Math.max(INSERT_GAP_PX, Math.round(dragStart.itemHeight)))
+      setInsertGapPx(Math.round(dragStart.itemHeight) || INSERT_GAP_PX)
       setDragFollower({
         noteId: note.id,
         startX: dragStart.startX,
@@ -1053,12 +1165,14 @@ function App() {
         clientX: dragStart.startX,
         clientY: dragStart.startY,
       }
-      setSwipePreview({ noteId: '', direction: '', progress: 0 })
+      setSwipePreview({ noteId: '', direction: '', progress: 0, offset: 0 })
     }, LONG_PRESS_DRAG_MS)
   }
 
-  const updateDropIndicatorFromPoint = (activeDragId, clientX, clientY, explicitTargetId = '') => {
-    if (!activeDragId || typeof document === 'undefined') {
+  // ドロップ位置は「ドラッグ中のメモを除いたグループ内で何番目に入るか」（0..件数）で表す。
+  // 他のメモの中心とポインタの位置を比べて決めるので、隙間が開いて周りのメモが動いても判定がぶれない。
+  const updateDropIndicatorFromPoint = (activeDragId, clientY) => {
+    if (!activeDragId || !Number.isFinite(clientY)) {
       return false
     }
 
@@ -1073,67 +1187,43 @@ function App() {
       return false
     }
 
-    let targetElement = null
+    const listElement = notesListRef.current
+    if (!listElement) {
+      return false
+    }
 
-    if (explicitTargetId) {
-      targetElement = document.querySelector(`li.note-item[data-note-id="${explicitTargetId}"]`)
-    } else if (Number.isFinite(clientX) && Number.isFinite(clientY)) {
-      const hit = document.elementFromPoint(clientX, clientY)
-      if (hit) {
-        targetElement = hit.closest('li.note-item')
+    const elementsById = new Map()
+    listElement.querySelectorAll('li.note-item[data-note-id]').forEach((element) => {
+      elementsById.set(element.dataset.noteId, element)
+    })
+
+    const otherNotes = orderedNotes.filter(
+      (item) => Boolean(item.pinned) === draggingMeta.pinned && item.id !== activeDragId,
+    )
+
+    let nextIndex = 0
+    for (const item of otherNotes) {
+      const element = elementsById.get(item.id)
+      if (!element) {
+        continue
       }
+      const rect = element.getBoundingClientRect()
+      if (clientY < rect.top + rect.height / 2) {
+        break
+      }
+      nextIndex += 1
     }
-
-    if (!targetElement) {
-      return false
-    }
-
-    const targetId = targetElement.dataset.noteId || ''
-    if (!targetId) {
-      return false
-    }
-
-    const targetMeta = noteGroupMetaById.get(targetId)
-    if (!targetMeta) {
-      return false
-    }
-
-    // ピン留め中のメモの上では並べ替えしない
-    if (targetMeta.pinned || targetMeta.pinned !== draggingMeta.pinned) {
-      return false
-    }
-
-    const rect = targetElement.getBoundingClientRect()
-    const midY = rect.top + rect.height / 2
-    const targetIndex = targetMeta.index
-
-    // currentGroup 上の「何番目の隙間か」（0..length）を直接求める
-    const rawInsertIndex = clientY < midY ? targetIndex : targetIndex + 1
 
     const currentIndicator = dropIndicatorRef.current
-    const group = orderedNotes.filter((item) => Boolean(item.pinned) === draggingMeta.pinned)
-    const maxInsertIndex = group.length // 隙間は 0..length の範囲
-
-    const previousIndex =
-      currentIndicator && currentIndicator.pinned === draggingMeta.pinned
-        ? currentIndicator.index
-        : draggingMeta.index
-
-    const clampedRaw = Math.max(0, Math.min(rawInsertIndex, maxInsertIndex))
-    const delta = clampedRaw - previousIndex
-    const limited =
-      delta > 1 ? previousIndex + 1 : delta < -1 ? previousIndex - 1 : clampedRaw
-
-    const safeInsertIndex = Math.max(0, Math.min(limited, maxInsertIndex))
-
-    if (currentIndicator &&
+    if (
+      currentIndicator &&
       currentIndicator.pinned === draggingMeta.pinned &&
-      currentIndicator.index === safeInsertIndex
+      currentIndicator.index === nextIndex
     ) {
       return false
     }
 
-    const nextIndicator = { pinned: draggingMeta.pinned, index: safeInsertIndex }
+    const nextIndicator = { pinned: draggingMeta.pinned, index: nextIndex }
     dropIndicatorRef.current = nextIndicator
     setDropIndicator(nextIndicator)
     setDragMovedId((current) => (current === activeDragId ? current : activeDragId))
@@ -1247,7 +1337,7 @@ function App() {
         return
       }
 
-      void updateDropIndicatorFromPoint(activeTouchDragId, touch.clientX, touch.clientY)
+      void updateDropIndicatorFromPoint(activeTouchDragId, touch.clientY)
       return
     }
 
@@ -1257,7 +1347,7 @@ function App() {
 
     if (absDeltaX < SWIPE_MOVE_START_PX || absDeltaX < absDeltaY * SWIPE_DIRECTION_RATIO) {
       setSwipePreview((current) =>
-        current.noteId === note.id ? { noteId: '', direction: '', progress: 0 } : current,
+        current.noteId === note.id ? { noteId: '', direction: '', progress: 0, offset: 0 } : current,
       )
       return
     }
@@ -1266,18 +1356,19 @@ function App() {
       event.preventDefault()
     }
 
-    const progress = Math.min(absDeltaX / (SWIPE_TRIGGER_PX * 1.2), 1)
+    const progress = Math.min(absDeltaX / SWIPE_TRIGGER_PX, 1)
     const direction = deltaX > 0 ? (note.pinned ? 'unpin' : 'pin') : 'delete'
+    const offset = getSwipeOffset(deltaX)
 
     setSwipePreview((current) => {
       if (
         current.noteId === note.id &&
         current.direction === direction &&
-        Math.abs(current.progress - progress) < 0.02
+        current.offset === offset
       ) {
         return current
       }
-      return { noteId: note.id, direction, progress }
+      return { noteId: note.id, direction, progress, offset }
     })
   }
 
@@ -1321,6 +1412,9 @@ function App() {
     }
 
     const touch = event.changedTouches[0]
+    if (swipePreview.noteId === note.id) {
+      settleSwipe(note.id)
+    }
     clearSwipeState()
 
     if (!touch) {
@@ -1355,7 +1449,8 @@ function App() {
     void handleDelete(note.id)
   }
 
-  const reorderWithinGroup = async (activeDragId, targetPinned, insertIndex) => {
+  // toIndex は移動後のグループ内での位置（ドラッグ中のメモを除いた並びに差し込む位置）
+  const reorderWithinGroup = async (activeDragId, targetPinned, toIndex) => {
     if (!db || !user || !activeDragId) {
       return
     }
@@ -1366,15 +1461,14 @@ function App() {
       return
     }
 
-    const safeInsertIndex = Math.max(0, Math.min(insertIndex, currentGroup.length))
-    const toIndex = safeInsertIndex > fromIndex ? safeInsertIndex - 1 : safeInsertIndex
-    if (fromIndex === toIndex) {
+    const safeToIndex = Math.max(0, Math.min(toIndex, currentGroup.length - 1))
+    if (fromIndex === safeToIndex) {
       return
     }
 
     const reordered = [...currentGroup]
     const [moved] = reordered.splice(fromIndex, 1)
-    reordered.splice(toIndex, 0, moved)
+    reordered.splice(safeToIndex, 0, moved)
 
     setErrorMessage('')
 
@@ -1401,119 +1495,43 @@ function App() {
     }
   }
 
-  const handleDragOver = (note, event) => {
-    const dataTransfer = event.dataTransfer ?? null
-    const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
+  // メモ同士の隙間やスペーサーの上でも反応するよう、ドラッグオーバー／ドロップはリスト全体で受ける
+  const handleListDragOver = (event) => {
+    const activeDragId = dragIdRef.current || dragId
+    if (!activeDragId) {
+      return
+    }
+
     updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
     updateAutoScroll(activeDragId, event.clientY)
+    event.preventDefault()
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move'
+    }
+    void updateDropIndicatorFromPoint(activeDragId, event.clientY)
+  }
+
+  const handleListDrop = async (event) => {
+    const activeDragId = dragIdRef.current || dragId
     if (!activeDragId) {
       return
     }
 
     event.preventDefault()
-    if (dataTransfer) {
-      dataTransfer.dropEffect = 'move'
-    }
-    void updateDropIndicatorFromPoint(activeDragId, event.clientX, event.clientY, note.id)
-  }
-
-  const handleDropSpacerOver = (event) => {
-    const dataTransfer = event.dataTransfer ?? null
-    const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
-    updateDragFollowerPosition(activeDragId, event.clientX, event.clientY)
-    updateAutoScroll(activeDragId, event.clientY)
-    if (!activeDragId || !dropIndicator) {
-      return
-    }
-
-    event.preventDefault()
-    if (dataTransfer) {
-      dataTransfer.dropEffect = 'move'
-    }
-    if (dragMovedId !== activeDragId) {
-      setDragMovedId(activeDragId)
-    }
-  }
-
-  const handleDropByIndicator = async (event) => {
-    event.preventDefault()
-    event.stopPropagation()
-
-    const dataTransfer = event.dataTransfer ?? null
-    const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
-    const indicatorSnapshot = dropIndicator
+    const indicatorSnapshot = dropIndicatorRef.current
     clearDragState()
-    if (!activeDragId) {
-      return
-    }
 
     if (!indicatorSnapshot) {
       return
     }
 
     const draggingNote = orderedNotesById.get(activeDragId)
-    if (!draggingNote) {
-      return
-    }
-
-    if (indicatorSnapshot.pinned !== Boolean(draggingNote.pinned)) {
-      return
-    }
-
-    await reorderWithinGroup(activeDragId, Boolean(draggingNote.pinned), indicatorSnapshot.index)
-  }
-
-  const handleDrop = async (targetNote, event) => {
-    event.preventDefault()
-    event.stopPropagation()
-
-    const dataTransfer = event.dataTransfer ?? null
-    const activeDragId = dragIdRef.current || dragId || dataTransfer?.getData('text/plain') || ''
-    const indicatorSnapshot = dropIndicator
-    clearDragState()
-
-    if (!db || !user || !activeDragId) {
-      return
-    }
-
-    if (indicatorSnapshot) {
-      const draggingNote = orderedNotesById.get(activeDragId)
-      if (draggingNote && indicatorSnapshot.pinned === Boolean(draggingNote.pinned)) {
-        await reorderWithinGroup(
-          activeDragId,
-          Boolean(draggingNote.pinned),
-          indicatorSnapshot.index,
-        )
-        return
-      }
-    }
-
-    if (activeDragId === targetNote.id) {
-      return
-    }
-
-    const draggingNote = orderedNotesById.get(activeDragId)
-    if (!draggingNote) {
-      clearDragState()
-      return
-    }
-
-    const targetPinned = Boolean(targetNote.pinned)
-    if (Boolean(draggingNote.pinned) !== targetPinned) {
+    if (!draggingNote || indicatorSnapshot.pinned !== Boolean(draggingNote.pinned)) {
       // ピン留め中のメモと通常メモはドラッグ&ドロップで混在させない
       return
     }
 
-    const currentGroup = orderedNotes.filter((item) => Boolean(item.pinned) === targetPinned)
-    let insertIndex = currentGroup.findIndex((item) => item.id === targetNote.id)
-    if (dropIndicator && dropIndicator.pinned === targetPinned) {
-      insertIndex = dropIndicator.index
-    }
-    if (insertIndex < 0) {
-      return
-    }
-
-    await reorderWithinGroup(activeDragId, targetPinned, insertIndex)
+    await reorderWithinGroup(activeDragId, Boolean(draggingNote.pinned), indicatorSnapshot.index)
   }
 
   const handleEditKeyDown = (event, noteId) => {
@@ -1592,6 +1610,21 @@ function App() {
     const displayName = user.displayName || 'Googleユーザー'
     const avatarFallback = displayName.trim().slice(0, 1) || 'G'
 
+    // ドロップ位置（ドラッグ中のメモを除いた並びでの位置）から、隙間を差し込むメモを決める
+    let spacerBeforeId = ''
+    let spacerAfterId = ''
+    if (dropIndicator && dragId) {
+      const otherNotes = orderedNotes.filter(
+        (item) => Boolean(item.pinned) === dropIndicator.pinned && item.id !== dragId,
+      )
+      if (dropIndicator.index < otherNotes.length) {
+        spacerBeforeId = otherNotes[dropIndicator.index].id
+      } else {
+        spacerAfterId = otherNotes.length > 0 ? otherNotes[otherNotes.length - 1].id : dragId
+      }
+    }
+    const dropSpacer = <li className="note-drop-spacer" aria-hidden="true" />
+
     return (
       <>
         <header className="app-header">
@@ -1657,7 +1690,13 @@ function App() {
           {notes.length === 0 && !notesLoading ? (
             <p className="empty-state">メモがありません</p>
           ) : (
-            <ul className="notes-list" style={{ '--insert-gap': `${insertGapPx}px` }}>
+            <ul
+              ref={notesListRef}
+              className="notes-list"
+              style={{ '--insert-gap': `${insertGapPx}px` }}
+              onDragOver={handleListDragOver}
+              onDrop={(event) => void handleListDrop(event)}
+            >
               {orderedNotes.map((note) => {
                 const isEditing = editId === note.id
                 const isDragging = dragId === note.id
@@ -1665,29 +1704,16 @@ function App() {
                 const dragFollowState =
                   dragFollower && dragFollower.noteId === note.id ? dragFollower : null
                 const isDragFollowing = Boolean(dragFollowState && dragMovedId === note.id)
-                const noteGroupMeta = noteGroupMetaById.get(note.id)
-                const isInsertBefore = Boolean(
-                  dropIndicator &&
-                  noteGroupMeta &&
-                  dropIndicator.pinned === noteGroupMeta.pinned &&
-                  dropIndicator.index === noteGroupMeta.index &&
-                  (dragId !== note.id || noteGroupMeta.index === 0),
-                )
-                const isInsertAfter = Boolean(
-                  dropIndicator &&
-                  noteGroupMeta &&
-                  noteGroupMeta.index === noteGroupMeta.size - 1 &&
-                  dropIndicator.pinned === noteGroupMeta.pinned &&
-                  dropIndicator.index === noteGroupMeta.size &&
-                  dragId !== note.id,
-                )
                 const swipeHint =
                   swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
                 const showActions = isEditing || !isTouchLayout
                 const showPinButton = !isTouchLayout
+                const isSwipeArmed = Boolean(swipeHint && swipeHint.progress >= 1)
                 const itemStyle = {}
                 if (swipeHint) {
                   itemStyle['--swipe-progress'] = swipeHint.progress
+                  itemStyle['--swipe-x'] = `${swipeHint.offset}px`
+                  itemStyle['--swipe-reveal'] = `${Math.abs(swipeHint.offset)}px`
                 }
                 if (dragFollowState) {
                   itemStyle['--drag-dx'] = `${Math.round(dragFollowState.currentX - dragFollowState.startX)}px`
@@ -1699,14 +1725,7 @@ function App() {
 
               return (
                 <Fragment key={note.id}>
-                  {isInsertBefore ? (
-                    <li
-                      className="note-drop-spacer"
-                      aria-hidden="true"
-                      onDragOver={handleDropSpacerOver}
-                      onDrop={(event) => void handleDropByIndicator(event)}
-                    />
-                  ) : null}
+                  {spacerBeforeId === note.id ? dropSpacer : null}
                   <li
                     className={[
                       'note-item',
@@ -1721,6 +1740,7 @@ function App() {
                           : swipeHint && swipeHint.direction === 'unpin'
                             ? 'note-item--swipe-unpin'
                             : '',
+                      swipeSettleId === note.id && !swipeHint ? 'note-item--swipe-settle' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -1729,8 +1749,6 @@ function App() {
                     draggable={!isEditing && !isTouchLayout && !note.pinned}
                     onDragStart={(event) => handleDragStart(note, event)}
                     onDrag={(event) => handleDrag(note, event)}
-                    onDragOver={(event) => handleDragOver(note, event)}
-                    onDrop={(event) => void handleDrop(note, event)}
                     onDragEnd={clearDragState}
                     onTouchStart={(event) => handleTouchStart(note, event)}
                     onTouchMove={(event) => handleTouchMove(note, event)}
@@ -1751,13 +1769,28 @@ function App() {
                             : swipeHint.direction === 'pin'
                               ? 'note-swipe-hint--pin'
                               : 'note-swipe-hint--unpin',
-                        ].join(' ')}
+                          isSwipeArmed ? 'is-armed' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        aria-hidden="true"
                       >
-                        {swipeHint.direction === 'delete'
-                          ? '← 削除'
-                          : swipeHint.direction === 'pin'
-                            ? '→ ピン留め'
-                            : '→ ピン留め解除'}
+                        <span className="note-swipe-hint-icon">
+                          {swipeHint.direction === 'delete' ? (
+                            <TrashIcon size={20} />
+                          ) : swipeHint.direction === 'pin' ? (
+                            <PinIcon size={20} />
+                          ) : (
+                            <PinOffIcon size={20} />
+                          )}
+                        </span>
+                        <span className="note-swipe-hint-label">
+                          {swipeHint.direction === 'delete'
+                            ? '削除'
+                            : swipeHint.direction === 'pin'
+                              ? 'ピン留め'
+                              : '解除'}
+                        </span>
                       </div>
                     ) : null}
                     {isEditing ? (
@@ -1780,7 +1813,7 @@ function App() {
                             aria-label={note.pinned ? 'ピン留め解除' : 'ピン留め'}
                             title={note.pinned ? 'ピン留め解除' : 'ピン留め'}
                           >
-                            📌
+                            <PinIcon filled={Boolean(note.pinned)} />
                           </button>
                         ) : null}
                       </div>
@@ -1816,14 +1849,7 @@ function App() {
                       ) : null}
                     </div>
                   </li>
-                  {isInsertAfter ? (
-                    <li
-                      className="note-drop-spacer"
-                      aria-hidden="true"
-                      onDragOver={handleDropSpacerOver}
-                      onDrop={(event) => void handleDropByIndicator(event)}
-                    />
-                  ) : null}
+                  {spacerAfterId === note.id ? dropSpacer : null}
                 </Fragment>
               )
               })}
