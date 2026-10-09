@@ -666,8 +666,8 @@ button:disabled {
 }
 
 .pin-icon-btn .ui-icon {
+  /* 以前の 📌 と同じく、針が左下を向いた斜めの向きに固定する */
   transform: rotate(45deg);
-  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .pin-icon-btn:hover:enabled {
@@ -679,10 +679,6 @@ button:disabled {
   transform: translateY(-1px);
 }
 
-.pin-icon-btn:hover:enabled .ui-icon {
-  transform: rotate(20deg);
-}
-
 .pin-icon-btn.is-active {
   background: #3b82f6;
   border-color: #3b82f6;
@@ -690,18 +686,10 @@ button:disabled {
   box-shadow: 0 6px 14px -8px rgba(37, 99, 235, 0.65);
 }
 
-.pin-icon-btn.is-active .ui-icon {
-  transform: none;
-}
-
 .pin-icon-btn.is-active:hover:enabled {
   color: #ffffff;
   background: #2563eb;
   border-color: #2563eb;
-}
-
-.pin-icon-btn.is-active:hover:enabled .ui-icon {
-  transform: rotate(-12deg);
 }
 
 .actions {
