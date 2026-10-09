@@ -293,6 +293,81 @@ function getSwipeOffset(deltaX) {
   return Math.round(Math.sign(deltaX) * eased)
 }
 
+// ホーム画面に追加したアプリ（スタンドアロン表示）として起動しているか
+function isStandaloneApp() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true
+  )
+}
+
+function isIosDevice() {
+  const { userAgent, maxTouchPoints } = window.navigator
+  // iPadOS はデスクトップ版 Safari と同じ UA を名乗るので、タッチ対応かどうかで見分ける
+  return /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1)
+}
+
+function getIosMajorVersion() {
+  const match = window.navigator.userAgent.match(/OS (\d+)_\d+(?:_\d+)? like Mac OS X/)
+  return match ? Number(match[1]) : null
+}
+
+// Android 用: 外部ブラウザに渡すための intent:// 形式の URL を作る
+function toAndroidIntentUrl(url) {
+  try {
+    const parsed = new URL(url)
+    // intent:// 形式では # 以降を表現できないので、その場合は通常どおり開く
+    if (parsed.hash) {
+      return null
+    }
+    const scheme = parsed.protocol.replace(':', '')
+    return (
+      `intent://${parsed.host}${parsed.pathname}${parsed.search}` +
+      `#Intent;scheme=${scheme};action=android.intent.action.VIEW;` +
+      'category=android.intent.category.BROWSABLE;' +
+      `S.browser_fallback_url=${encodeURIComponent(url)};end`
+    )
+  } catch {
+    return null
+  }
+}
+
+// アプリとして起動しているときは、アプリ内ブラウザではなく外部ブラウザでリンクを開く
+function getExternalBrowserUrl(url) {
+  if (!isStandaloneApp()) {
+    return null
+  }
+
+  if (/Android/i.test(window.navigator.userAgent)) {
+    return toAndroidIntentUrl(url)
+  }
+
+  if (isIosDevice()) {
+    const iosVersion = getIosMajorVersion()
+    // x-safari-https:// は iOS 17 以降のみ対応
+    if (iosVersion !== null && iosVersion < 17) {
+      return null
+    }
+    return /^https?:\/\//i.test(url) ? `x-safari-${url}` : null
+  }
+
+  return null
+}
+
+function handleExternalLinkClick(event, url) {
+  const externalUrl = getExternalBrowserUrl(url)
+  if (!externalUrl) {
+    return
+  }
+
+  event.preventDefault()
+  window.location.href = externalUrl
+}
+
 function renderLinkedText(text, onCopyText, keyPrefix) {
   const parts = text.split(URL_SPLIT_PATTERN)
 
@@ -315,6 +390,7 @@ function renderLinkedText(text, onCopyText, keyPrefix) {
             href={part}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(event) => handleExternalLinkClick(event, part)}
             aria-label={`リンクを開く: ${part}`}
             title="リンクを開く"
           >
@@ -379,6 +455,7 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
               href={part}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(event) => handleExternalLinkClick(event, part)}
               aria-label={`リンクを開く: ${part}`}
               title="リンクを開く"
             >
