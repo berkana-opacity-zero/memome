@@ -352,7 +352,8 @@ function getExternalBrowserUrl(url) {
     if (iosVersion !== null && iosVersion < 17) {
       return null
     }
-    return /^https?:\/\//i.test(url) ? `x-safari-${url}` : null
+    // x-safari-http:// は存在しない（「アドレスが無効です」になる）ので、http:// のURLは通常どおり開く
+    return /^https:\/\//i.test(url) ? `x-safari-${url}` : null
   }
 
   return null
