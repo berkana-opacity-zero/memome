@@ -1,6 +1,6 @@
 :root {
-  font-family: 'Avenir Next', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
-  line-height: 1.5;
+  font-family: 'Inter', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+  line-height: 1.6;
   font-weight: 400;
   color-scheme: light;
   --theme-fade-duration: 260ms;
@@ -8,10 +8,58 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* 配色トークン（ライト） */
+  --bg: #f4f5f7;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-solid: #ffffff;
+  --chip: #f3f5f8;
+  --kbd: #eef0f3;
+  --border: #e2e5ea;
+  --border-strong: #cdd2da;
+  --text: #14171f;
+  --muted: #596070;
+  --accent: #2f5bea;
+  --accent-hover: #2449c9;
+  --accent-text: #2f5bea;
+  --accent-soft: rgba(47, 91, 234, 0.1);
+  --accent-ring: rgba(47, 91, 234, 0.28);
+  --pinned-bg: rgba(240, 244, 255, 0.94);
+  --pinned-border: #c9d6fa;
+  --danger: #c9302c;
+  --danger-solid: #dc2626;
+  --danger-soft: #fdecec;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 8px 24px -12px rgba(16, 24, 40, 0.25);
+  --shadow-lift: 0 24px 48px -16px rgba(16, 24, 40, 0.4);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+
+  /* 配色トークン（ダーク）: 真っ黒ではなく少し青みのある濃いグレー */
+  --bg: #0d0f13;
+  --surface: rgba(22, 25, 31, 0.9);
+  --surface-solid: #16191f;
+  --chip: #1c2028;
+  --kbd: #222731;
+  --border: #262b34;
+  --border-strong: #3a414d;
+  --text: #e7e9ed;
+  --muted: #a0a7b4;
+  --accent: #3d63f0;
+  --accent-hover: #5577f5;
+  --accent-text: #8ea8ff;
+  --accent-soft: rgba(142, 168, 255, 0.14);
+  --accent-ring: rgba(142, 168, 255, 0.32);
+  --pinned-bg: rgba(21, 28, 46, 0.94);
+  --pinned-border: #2b3b66;
+  --danger: #ff8a80;
+  --danger-solid: #dc2626;
+  --danger-soft: rgba(255, 138, 128, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px -12px rgba(0, 0, 0, 0.8);
+  --shadow-lift: 0 24px 48px -16px rgba(0, 0, 0, 0.9);
 }
 
 * {
@@ -41,62 +89,63 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  color: #1f2933;
-  background: linear-gradient(165deg, #f8fbff 6%, #ecf4ff 46%, #ecfbff 100%);
-  transition: background 320ms ease, color 240ms ease;
+  color: var(--text);
+  background: var(--bg);
+  transition: background-color 320ms ease, color 240ms ease;
 }
 
-:root[data-theme='dark'] body {
-  color: #e2e8f0;
-  background: linear-gradient(165deg, #070d18 8%, #0f172a 50%, #0b1322 100%);
-}
-
+/*
+ * 背景のぼかし。大きさも形も違う楕円を不規則な位置に置き、
+ * 全体を少し傾けて「たまたまにじんだ」ような偶然っぽさを出す。
+ */
 body::before,
 body::after {
   content: '';
   position: fixed;
-  inset: -24vmax;
+  inset: -20vmax;
   pointer-events: none;
   z-index: 0;
-  transform: translate3d(0, 0, 0);
-  transition: background 320ms ease, filter 320ms ease, opacity 320ms ease;
+  transition: opacity 320ms ease, filter 320ms ease;
 }
 
 body::before {
   background:
-    radial-gradient(34vmax 34vmax at 12% 20%, rgba(244, 114, 182, 0.58), transparent 66%),
-    radial-gradient(38vmax 38vmax at 88% 14%, rgba(56, 189, 248, 0.52), transparent 67%),
-    radial-gradient(40vmax 40vmax at 20% 86%, rgba(99, 102, 241, 0.44), transparent 68%),
-    radial-gradient(36vmax 36vmax at 82% 82%, rgba(34, 197, 94, 0.42), transparent 66%);
-  filter: blur(84px) saturate(116%);
+    radial-gradient(30vmax 22vmax at 14% 18%, rgba(129, 161, 255, 0.55), transparent 70%),
+    radial-gradient(18vmax 26vmax at 83% 9%, rgba(244, 164, 214, 0.42), transparent 72%),
+    radial-gradient(34vmax 20vmax at 72% 58%, rgba(125, 211, 232, 0.36), transparent 70%),
+    radial-gradient(22vmax 30vmax at 23% 83%, rgba(178, 160, 255, 0.4), transparent 70%),
+    radial-gradient(14vmax 12vmax at 52% 34%, rgba(255, 214, 165, 0.38), transparent 72%);
+  filter: blur(72px) saturate(112%);
+  transform: rotate(-9deg) scale(1.05);
   opacity: 0.9;
 }
 
 body::after {
   background:
-    radial-gradient(30vmax 30vmax at 48% 8%, rgba(250, 204, 21, 0.36), transparent 70%),
-    radial-gradient(32vmax 32vmax at 54% 92%, rgba(168, 85, 247, 0.3), transparent 72%);
-  filter: blur(102px) saturate(120%);
-  opacity: 0.7;
+    radial-gradient(20vmax 14vmax at 91% 77%, rgba(134, 239, 172, 0.32), transparent 72%),
+    radial-gradient(12vmax 18vmax at 6% 52%, rgba(147, 197, 253, 0.38), transparent 72%),
+    radial-gradient(16vmax 11vmax at 41% 96%, rgba(251, 191, 160, 0.3), transparent 74%);
+  filter: blur(96px);
+  transform: rotate(14deg);
+  opacity: 0.8;
 }
 
 :root[data-theme='dark'] body::before {
   background:
-    radial-gradient(34vmax 34vmax at 12% 20%, rgba(244, 63, 94, 0.56), transparent 66%),
-    radial-gradient(40vmax 40vmax at 88% 14%, rgba(6, 182, 212, 0.52), transparent 68%),
-    radial-gradient(42vmax 42vmax at 20% 86%, rgba(129, 140, 248, 0.48), transparent 70%),
-    radial-gradient(38vmax 38vmax at 82% 82%, rgba(34, 197, 94, 0.42), transparent 68%);
-  filter: blur(82px) saturate(152%);
-  opacity: 0.9;
+    radial-gradient(30vmax 22vmax at 14% 18%, rgba(76, 106, 230, 0.5), transparent 70%),
+    radial-gradient(18vmax 26vmax at 83% 9%, rgba(190, 70, 150, 0.36), transparent 72%),
+    radial-gradient(34vmax 20vmax at 72% 58%, rgba(14, 140, 170, 0.34), transparent 70%),
+    radial-gradient(22vmax 30vmax at 23% 83%, rgba(110, 80, 220, 0.4), transparent 70%),
+    radial-gradient(14vmax 12vmax at 52% 34%, rgba(200, 140, 60, 0.22), transparent 72%);
+  opacity: 0.7;
 }
 
 :root[data-theme='dark'] body::after {
   background:
-    radial-gradient(34vmax 34vmax at 48% 8%, rgba(251, 191, 36, 0.4), transparent 72%),
-    radial-gradient(36vmax 36vmax at 54% 92%, rgba(168, 85, 247, 0.42), transparent 74%),
-    radial-gradient(28vmax 28vmax at 50% 50%, rgba(59, 130, 246, 0.26), transparent 76%);
-  filter: blur(98px) saturate(148%);
-  opacity: 0.78;
+    radial-gradient(20vmax 14vmax at 91% 77%, rgba(30, 160, 100, 0.28), transparent 72%),
+    radial-gradient(12vmax 18vmax at 6% 52%, rgba(60, 110, 220, 0.34), transparent 72%),
+    radial-gradient(16vmax 11vmax at 41% 96%, rgba(190, 90, 70, 0.22), transparent 74%);
+  opacity: 0.65;
 }
 
 #root {

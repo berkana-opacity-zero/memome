@@ -24,6 +24,7 @@ const provider = new GoogleAuthProvider()
 const URL_SPLIT_PATTERN = /(https?:\/\/[^\s]+)/gi
 const STRICT_URL_PATTERN = /^https?:\/\/[^\s]+$/i
 const THEME_STORAGE_KEY = 'memome-theme'
+const URL_EXPANDED_STORAGE_KEY = 'memome-url-expanded'
 const TOUCH_LAYOUT_QUERY = '(hover: none) and (pointer: coarse)'
 const SWIPE_TRIGGER_PX = 72
 const SWIPE_DIRECTION_RATIO = 1.25
@@ -52,6 +53,18 @@ function getInitialTheme() {
   }
 
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+function getInitialUrlExpanded() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  try {
+    return window.localStorage.getItem(URL_EXPANDED_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
 }
 
 function getInitialTouchLayout() {
@@ -282,6 +295,122 @@ function TrashIcon({ size = 16 }) {
   )
 }
 
+function GlobeIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a14 14 0 0 1 0 18" />
+      <path d="M12 3a14 14 0 0 0 0 18" />
+    </Icon>
+  )
+}
+
+function GripIcon() {
+  return (
+    <svg className="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" focusable="false">
+      <circle cx="9" cy="6" r="1.6" />
+      <circle cx="15" cy="6" r="1.6" />
+      <circle cx="9" cy="12" r="1.6" />
+      <circle cx="15" cy="12" r="1.6" />
+      <circle cx="9" cy="18" r="1.6" />
+      <circle cx="15" cy="18" r="1.6" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <Icon size={18}>
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />
+    </Icon>
+  )
+}
+
+function SunIcon() {
+  return (
+    <Icon size={18}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.41 1.41" />
+      <path d="m17.66 17.66 1.41 1.41" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.34 17.66-1.41 1.41" />
+      <path d="m19.07 4.93-1.41 1.41" />
+    </Icon>
+  )
+}
+
+// URL を折り返して全部見せる状態にする（上下に広がる矢印）
+function ExpandIcon() {
+  return (
+    <Icon size={18}>
+      <path d="m7 15 5 5 5-5" />
+      <path d="m7 9 5-5 5 5" />
+    </Icon>
+  )
+}
+
+// URL を1行に省略する状態に戻す（上下から閉じる矢印）
+function CollapseIcon() {
+  return (
+    <Icon size={18}>
+      <path d="m7 20 5-5 5 5" />
+      <path d="m7 4 5 5 5-5" />
+    </Icon>
+  )
+}
+
+function LogoutIcon() {
+  return (
+    <Icon size={18}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </Icon>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <Icon size={17}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Icon>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <Icon size={18}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </Icon>
+  )
+}
+
+function ArrowUpIcon() {
+  return (
+    <Icon size={20}>
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </Icon>
+  )
+}
+
+function LogoIcon({ size = 18 }) {
+  return (
+    <Icon size={size}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <path d="M14 3v6h6" />
+      <path d="M8 13h8" />
+      <path d="M8 17h5" />
+    </Icon>
+  )
+}
+
 // 指の移動量からカードの表示位置を求める（一定以上はゴムのように抵抗をつける）
 function getSwipeOffset(deltaX) {
   const distance = Math.max(0, Math.abs(deltaX) - SWIPE_MOVE_START_PX)
@@ -369,79 +498,30 @@ function handleExternalLinkClick(event, url) {
   window.location.href = externalUrl
 }
 
-function renderLinkedText(text, onCopyText, keyPrefix) {
-  const parts = text.split(URL_SPLIT_PATTERN)
-
-  return parts.map((part, index) => {
-    if (STRICT_URL_PATTERN.test(part)) {
-      return (
-        <span className="note-url-item" key={`${keyPrefix}-url-${index}`}>
-          <span className="note-url-text">{part}</span>
-          <button
-            type="button"
-            className="note-link-icon note-link-icon--copy"
-            onClick={() => void onCopyText(part)}
-            aria-label={`URLをコピー: ${part}`}
-            title="URLをコピー"
-          >
-            <PaperclipIcon />
-          </button>
-          <a
-            className="note-link-icon"
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(event) => handleExternalLinkClick(event, part)}
-            aria-label={`リンクを開く: ${part}`}
-            title="リンクを開く"
-          >
-            <ExternalLinkIcon />
-          </a>
-        </span>
-      )
-    }
-
-    if (!part) {
-      return null
-    }
-
-    const leadingWhitespace = part.match(/^\s+/)?.[0] ?? ''
-    const trailingWhitespace = part.match(/\s+$/)?.[0] ?? ''
-    const visibleText = part.slice(leadingWhitespace.length, part.length - trailingWhitespace.length)
-
-    if (!visibleText) {
-      return <Fragment key={`${keyPrefix}-space-${index}`}>{part}</Fragment>
-    }
-
-    return (
-      <Fragment key={`${keyPrefix}-txt-${index}`}>
-        {leadingWhitespace}
-        <span className="note-text-item">
-          <span className="note-text-content">{visibleText}</span>
-          <button
-            type="button"
-            className="note-link-icon note-link-icon--copy"
-            onClick={() => void onCopyText(visibleText)}
-            aria-label="テキストをコピー"
-            title="テキストをコピー"
-          >
-            <PaperclipIcon />
-          </button>
-        </span>
-        {trailingWhitespace}
-      </Fragment>
-    )
-  })
+// URL をチップ表示用に「ドメイン」と「それ以降」に分ける（プロトコルは表示しない）
+function splitUrlForDisplay(url) {
+  const match = url.match(/^https?:\/\/([^/?#]+)(.*)$/i)
+  if (!match) {
+    return { host: url, rest: '' }
+  }
+  return { host: match[1], rest: match[2] }
 }
 
-function renderTouchLinkedText(text, onCopyText, keyPrefix) {
-  const parts = text.split(URL_SPLIT_PATTERN)
+function renderLineSegments(line, onCopyText, keyPrefix) {
+  const parts = line.split(URL_SPLIT_PATTERN)
   const items = parts.map((part, index) => {
     if (STRICT_URL_PATTERN.test(part)) {
+      const { host, rest } = splitUrlForDisplay(part)
       return (
-        <span className="note-touch-item note-touch-item--url" key={`${keyPrefix}-url-${index}`}>
-          <span className="note-touch-text note-touch-text--url">{part}</span>
-          <span className="note-touch-actions">
+        <span className="note-seg note-seg--url" key={`${keyPrefix}-url-${index}`}>
+          <span className="note-url-chip" title={part}>
+            <GlobeIcon />
+            <span className="note-url-label">
+              <span className="note-url-host">{host}</span>
+              {rest ? <span className="note-url-rest">{rest}</span> : null}
+            </span>
+          </span>
+          <span className="note-seg-actions">
             <button
               type="button"
               className="note-link-icon note-link-icon--copy"
@@ -452,7 +532,7 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
               <PaperclipIcon />
             </button>
             <a
-              className="note-link-icon"
+              className="note-link-icon note-link-icon--open"
               href={part}
               target="_blank"
               rel="noopener noreferrer"
@@ -467,22 +547,15 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
       )
     }
 
-    if (!part) {
-      return null
-    }
-
-    const leadingWhitespace = part.match(/^\s+/)?.[0] ?? ''
-    const trailingWhitespace = part.match(/\s+$/)?.[0] ?? ''
-    const visibleText = part.slice(leadingWhitespace.length, part.length - trailingWhitespace.length)
-
+    const visibleText = part.trim()
     if (!visibleText) {
       return null
     }
 
     return (
-      <span className="note-touch-item" key={`${keyPrefix}-txt-${index}`}>
-        <span className="note-touch-text">{part}</span>
-        <span className="note-touch-actions">
+      <span className="note-seg note-seg--text" key={`${keyPrefix}-txt-${index}`}>
+        <span className="note-seg-text">{part.trimEnd()}</span>
+        <span className="note-seg-actions">
           <button
             type="button"
             className="note-link-icon note-link-icon--copy"
@@ -492,7 +565,6 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
           >
             <PaperclipIcon />
           </button>
-          <span className="note-link-icon note-link-icon--placeholder" aria-hidden="true" />
         </span>
       </span>
     )
@@ -505,37 +577,68 @@ function renderTouchLinkedText(text, onCopyText, keyPrefix) {
   )
 }
 
-function renderNoteBody(text, onCopyText, isTouchLayout) {
+function renderNoteBody(text, onCopyText) {
   const lines = text.split('\n')
 
   return lines.map((line, index) => {
     const keyPrefix = `line-${index}`
     const isEmptyLine = line.length === 0
-    const hasUrl = !isEmptyLine && /https?:\/\/\S/i.test(line)
-    const lineClassName = [
-      'note-line',
-      isEmptyLine ? 'note-line--empty' : '',
-      hasUrl ? 'note-line--url' : '',
-    ]
-      .filter(Boolean)
-      .join(' ')
 
     return (
-      <span className={lineClassName} key={keyPrefix}>
+      <span className={`note-line${isEmptyLine ? ' note-line--empty' : ''}`} key={keyPrefix}>
         <span className="note-line-content">
           {isEmptyLine ? (
             <span className="note-line-placeholder" aria-hidden="true">
               {'\u00a0'}
             </span>
           ) : (
-            isTouchLayout
-              ? renderTouchLinkedText(line, onCopyText, keyPrefix)
-              : renderLinkedText(line, onCopyText, keyPrefix)
+            renderLineSegments(line, onCopyText, keyPrefix)
           )}
         </span>
       </span>
     )
   })
+}
+
+// 更新日時を「〇分前」「〇日前」のような短い表記にする
+function formatRelativeTime(millis, now) {
+  if (!millis) {
+    return 'たった今'
+  }
+
+  const diffMinutes = Math.floor(Math.max(0, now - millis) / 60000)
+  if (diffMinutes < 1) {
+    return 'たった今'
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes}分前`
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) {
+    return `${diffHours}時間前`
+  }
+
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays === 1) {
+    return '昨日'
+  }
+  if (diffDays < 7) {
+    return `${diffDays}日前`
+  }
+
+  const date = new Date(millis)
+  const monthDay = `${date.getMonth() + 1}月${date.getDate()}日`
+  return date.getFullYear() === new Date(now).getFullYear()
+    ? monthDay
+    : `${date.getFullYear()}年${monthDay}`
+}
+
+function matchesSearch(note, normalizedQuery) {
+  if (!normalizedQuery) {
+    return true
+  }
+  return String(note.body ?? '').toLowerCase().includes(normalizedQuery)
 }
 
 function isInteractiveDragTarget(target) {
@@ -552,6 +655,7 @@ function isSubmitShortcut(event) {
 
 function App() {
   const [theme, setTheme] = useState(getInitialTheme)
+  const [isUrlExpanded, setIsUrlExpanded] = useState(getInitialUrlExpanded)
   const [isTouchLayout, setIsTouchLayout] = useState(getInitialTouchLayout)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(!firebaseConfigError)
@@ -576,6 +680,8 @@ function App() {
   const [swipeSettleId, setSwipeSettleId] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [copyToastVisible, setCopyToastVisible] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [now, setNow] = useState(() => Date.now())
   const draftInputRef = useRef(null)
   const notesListRef = useRef(null)
   const swipeSettleTimerRef = useRef(null)
@@ -625,11 +731,39 @@ function App() {
   }, [orderedNotes])
   const canSubmitDraft = normalizeBody(draft).length > 0
   const canSaveEdit = normalizeBody(editBody).length > 0
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  // 検索中は一部のメモしか表示されないため、ドラッグでの並べ替えは止める
+  const isSearching = normalizedSearchQuery.length > 0
+
+  // 「〇分前」の表示を古くしないよう、1分ごとに現在時刻を更新する
+  useEffect(() => {
+    const timerId = window.setInterval(() => setNow(Date.now()), 60000)
+    return () => window.clearInterval(timerId)
+  }, [])
+
+  // 入力欄の高さを内容に合わせて伸び縮みさせる
+  useEffect(() => {
+    const textarea = draftInputRef.current
+    if (!textarea) {
+      return
+    }
+    textarea.style.height = 'auto'
+    const borderHeight = textarea.offsetHeight - textarea.clientHeight
+    textarea.style.height = `${textarea.scrollHeight + borderHeight}px`
+  }, [draft, user])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     window.localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(URL_EXPANDED_STORAGE_KEY, String(isUrlExpanded))
+    } catch {
+      // 保存できない環境（プライベートブラウズなど）では、その場の切り替えだけ効かせる
+    }
+  }, [isUrlExpanded])
 
   useEffect(() => {
     dropIndicatorRef.current = dropIndicator
@@ -1114,7 +1248,7 @@ function App() {
   }
 
   const handleDragStart = (note, event) => {
-    if (editId || note.pinned || isInteractiveDragTarget(event.target)) {
+    if (editId || note.pinned || isSearching || isInteractiveDragTarget(event.target)) {
       event.preventDefault()
       return
     }
@@ -1212,7 +1346,7 @@ function App() {
 
     clearLongPressTimer()
     longPressTimerRef.current = window.setTimeout(() => {
-      if (swipeRef.current.noteId !== note.id || editId || note.pinned) {
+      if (swipeRef.current.noteId !== note.id || editId || note.pinned || isSearching) {
         return
       }
       const dragStart = swipeRef.current
@@ -1665,6 +1799,9 @@ function App() {
 
   const renderSignIn = () => (
     <section className="signin-card">
+      <span className="app-logo app-logo--large" aria-hidden="true">
+        <LogoIcon size={24} />
+      </span>
       <h1>MemoMe</h1>
       <p>Googleでログインするとメモが保存されます。</p>
       <button
@@ -1684,9 +1821,191 @@ function App() {
     </section>
   )
 
+  const renderNoteItem = (note, spacerBeforeId, spacerAfterId, dropSpacer) => {
+    const isEditing = editId === note.id
+    const isDragging = dragId === note.id
+    const isTouchDragging = touchDragId === note.id
+    const dragFollowState =
+      dragFollower && dragFollower.noteId === note.id ? dragFollower : null
+    const isDragFollowing = Boolean(dragFollowState && dragMovedId === note.id)
+    const swipeHint =
+      swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
+    const showDesktopActions = !isTouchLayout
+    const canDrag = !isEditing && !isTouchLayout && !note.pinned && !isSearching
+    const isSwipeArmed = Boolean(swipeHint && swipeHint.progress >= 1)
+    const itemStyle = {}
+    if (swipeHint) {
+      itemStyle['--swipe-progress'] = swipeHint.progress
+      itemStyle['--swipe-x'] = `${swipeHint.offset}px`
+      itemStyle['--swipe-reveal'] = `${Math.abs(swipeHint.offset)}px`
+    }
+    if (dragFollowState) {
+      itemStyle['--drag-dx'] = `${Math.round(dragFollowState.currentX - dragFollowState.startX)}px`
+      itemStyle['--drag-dy'] = `${Math.round(dragFollowState.currentY - dragFollowState.startY)}px`
+      itemStyle['--drag-left'] = `${Math.round(dragFollowState.itemLeft)}px`
+      itemStyle['--drag-top'] = `${Math.round(dragFollowState.itemTop)}px`
+      itemStyle['--drag-width'] = `${Math.round(dragFollowState.itemWidth)}px`
+    }
+
+    return (
+      <Fragment key={note.id}>
+        {spacerBeforeId === note.id ? dropSpacer : null}
+        <li
+          className={[
+            'note-item',
+            note.pinned ? 'note-item--pinned' : '',
+            canDrag ? 'note-item--draggable' : '',
+            isEditing ? 'note-item--editing' : '',
+            isDragging ? 'note-item--dragging' : '',
+            isTouchDragging ? 'note-item--touch-dragging' : '',
+            isDragFollowing ? 'note-item--drag-follow' : '',
+            swipeHint && swipeHint.direction === 'delete'
+              ? 'note-item--swipe-delete'
+              : swipeHint && swipeHint.direction === 'pin'
+                ? 'note-item--swipe-pin'
+                : swipeHint && swipeHint.direction === 'unpin'
+                  ? 'note-item--swipe-unpin'
+                  : '',
+            swipeSettleId === note.id && !swipeHint ? 'note-item--swipe-settle' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          data-note-id={note.id}
+          style={Object.keys(itemStyle).length > 0 ? itemStyle : undefined}
+          draggable={canDrag}
+          onDragStart={(event) => handleDragStart(note, event)}
+          onDrag={(event) => handleDrag(note, event)}
+          onDragEnd={clearDragState}
+          onTouchStart={(event) => handleTouchStart(note, event)}
+          onTouchMove={(event) => handleTouchMove(note, event)}
+          onTouchEnd={(event) => void handleTouchEnd(note, event)}
+          onContextMenu={handleTouchContextMenu}
+          onSelectStart={handleNoteSelectStart}
+          onTouchCancel={() => {
+            clearDragState()
+            clearSwipeState()
+          }}
+        >
+          {swipeHint ? (
+            <div
+              className={[
+                'note-swipe-hint',
+                swipeHint.direction === 'delete'
+                  ? 'note-swipe-hint--delete'
+                  : swipeHint.direction === 'pin'
+                    ? 'note-swipe-hint--pin'
+                    : 'note-swipe-hint--unpin',
+                isSwipeArmed ? 'is-armed' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-hidden="true"
+            >
+              <span className="note-swipe-hint-icon">
+                {swipeHint.direction === 'delete' ? (
+                  <TrashIcon size={20} />
+                ) : swipeHint.direction === 'pin' ? (
+                  <PinIcon size={20} />
+                ) : (
+                  <PinOffIcon size={20} />
+                )}
+              </span>
+              <span className="note-swipe-hint-label">
+                {swipeHint.direction === 'delete'
+                  ? '削除'
+                  : swipeHint.direction === 'pin'
+                    ? 'ピン留め'
+                    : '解除'}
+              </span>
+            </div>
+          ) : null}
+          {canDrag ? (
+            <span className="note-grip" aria-hidden="true">
+              <GripIcon />
+            </span>
+          ) : null}
+          {isEditing ? (
+            <>
+              <textarea
+                className="note-edit-input"
+                value={editBody}
+                onChange={(event) => setEditBody(event.target.value)}
+                onKeyDown={(event) => handleEditKeyDown(event, note.id)}
+                aria-label="メモを編集"
+                autoFocus
+                rows={2}
+              />
+              <div className="actions">
+                <button
+                  type="button"
+                  onClick={() => void handleUpdate(note.id, editBody)}
+                  disabled={!canSaveEdit}
+                >
+                  保存
+                </button>
+                <button type="button" className="btn-logout" onClick={cancelEdit}>
+                  キャンセル
+                </button>
+                {showDesktopActions ? (
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => handleDelete(note.id)}
+                  >
+                    削除
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="note-row" onClick={(event) => handleNoteRowClick(note, event)}>
+              <div className="note-main">
+                <div className="note-body">{renderNoteBody(note.body, handleCopyText)}</div>
+                <span className="note-meta">{formatRelativeTime(toMillis(note.updatedAt), now)}</span>
+              </div>
+              {showDesktopActions ? (
+                <div className="note-actions">
+                  <button
+                    type="button"
+                    className={`note-action-btn pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
+                    onClick={() => handleTogglePin(note)}
+                    aria-label={note.pinned ? 'ピン留め解除' : 'ピン留め'}
+                    title={note.pinned ? 'ピン留め解除' : 'ピン留め'}
+                  >
+                    <PinIcon filled={Boolean(note.pinned)} />
+                  </button>
+                  <button
+                    type="button"
+                    className="note-action-btn delete-icon-btn"
+                    onClick={() => handleDelete(note.id)}
+                    aria-label="削除"
+                    title="削除"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              ) : isTouchLayout && note.pinned ? (
+                <span className="note-pinned-badge" role="img" aria-label="ピン留め中">
+                  <PinIcon filled />
+                </span>
+              ) : null}
+            </div>
+          )}
+        </li>
+        {spacerAfterId === note.id ? dropSpacer : null}
+      </Fragment>
+    )
+  }
+
   const renderNotes = () => {
     const displayName = user.displayName || 'Googleユーザー'
     const avatarFallback = displayName.trim().slice(0, 1) || 'G'
+    const themeLabel = theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'
+    const urlToggleLabel = isUrlExpanded ? 'URLを1行に省略して表示' : 'URLを折り返して全部表示'
+
+    const visibleNotes = orderedNotes.filter((note) => matchesSearch(note, normalizedSearchQuery))
+    const pinnedNotes = visibleNotes.filter((note) => Boolean(note.pinned))
+    const regularNotes = visibleNotes.filter((note) => !note.pinned)
 
     // ドロップ位置（ドラッグ中のメモを除いた並びでの位置）から、隙間を差し込むメモを決める
     let spacerBeforeId = ''
@@ -1703,18 +2022,41 @@ function App() {
     }
     const dropSpacer = <li className="note-drop-spacer" aria-hidden="true" />
 
+    let countLabel = `${notes.length} 件`
+    if (notesLoading) {
+      countLabel = '同期中…'
+    } else if (isSearching) {
+      countLabel = `${visibleNotes.length} / ${notes.length} 件`
+    }
+
     return (
       <>
         <header className="app-header">
-          <div className="header-user-row">
+          <div className="app-brand">
+            <span className="app-logo" aria-hidden="true">
+              <LogoIcon />
+            </span>
+            <span className="app-name">MemoMe</span>
+          </div>
+          <div className="header-tools">
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={() => setIsUrlExpanded((current) => !current)}
+              aria-label={urlToggleLabel}
+              aria-pressed={isUrlExpanded}
+              title={urlToggleLabel}
+            >
+              {isUrlExpanded ? <CollapseIcon /> : <ExpandIcon />}
+            </button>
             <button
               type="button"
               className="theme-toggle"
               onClick={handleToggleTheme}
-              aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
-              title={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+              aria-label={themeLabel}
+              title={themeLabel}
             >
-              <span aria-hidden="true">💡</span>
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
             </button>
             <div className="header-user">
               {user.photoURL ? (
@@ -1733,205 +2075,106 @@ function App() {
             </div>
             <button
               type="button"
-              className="btn-logout"
+              className="btn-logout btn-logout--icon"
               onClick={handleSignOut}
               disabled={authPending}
+              aria-label="ログアウト"
+              title="ログアウト"
             >
-              ログアウト
+              <LogoutIcon />
             </button>
           </div>
         </header>
 
         <form className="composer" onSubmit={handleCreate}>
-          <div className="composer-row">
-            <textarea
-              id="new-note"
-              ref={draftInputRef}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={handleDraftKeyDown}
-              placeholder="メモを入力してください"
-              rows={2}
-            />
-            <button type="submit" className="btn-add" disabled={!canSubmitDraft}>
-              追加
+          <label htmlFor="new-note" className="sr-only">新しいメモ</label>
+          <textarea
+            id="new-note"
+            ref={draftInputRef}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={handleDraftKeyDown}
+            placeholder="メモを入力…"
+            rows={1}
+          />
+          <div className="composer-footer">
+            <span className="composer-hint">
+              <kbd>Ctrl</kbd>
+              <span>+</span>
+              <kbd>Enter</kbd>
+              <span>で追加</span>
+            </span>
+            <button
+              type="submit"
+              className="btn-add"
+              disabled={!canSubmitDraft}
+              aria-label="追加"
+            >
+              <span className="btn-add-icon btn-add-icon--plus">
+                <PlusIcon />
+              </span>
+              <span className="btn-add-icon btn-add-icon--send">
+                <ArrowUpIcon />
+              </span>
+              <span className="btn-add-label">追加</span>
             </button>
           </div>
         </form>
 
         <section className="notes-section">
-          <div className="notes-title">
-            <h2>保存したメモ</h2>
-            {notesLoading ? <span>同期中...</span> : <span>{notes.length} 件</span>}
+          <h2 className="sr-only">保存したメモ</h2>
+          <div className="notes-toolbar">
+            <label htmlFor="note-search" className="sr-only">メモを検索</label>
+            <div className="search-field">
+              <SearchIcon />
+              <input
+                id="note-search"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="メモを検索"
+                autoComplete="off"
+              />
+            </div>
+            <span className="notes-count">{countLabel}</span>
           </div>
 
           {notes.length === 0 && !notesLoading ? (
             <p className="empty-state">メモがありません</p>
+          ) : isSearching && visibleNotes.length === 0 ? (
+            <p className="empty-state">「{searchQuery.trim()}」に一致するメモはありません</p>
           ) : (
-            <ul
+            <div
               ref={notesListRef}
-              className="notes-list"
+              className={`notes-groups${isUrlExpanded ? ' notes-groups--url-expanded' : ''}`}
               style={{ '--insert-gap': `${insertGapPx}px` }}
               onDragOver={handleListDragOver}
               onDrop={(event) => void handleListDrop(event)}
             >
-              {orderedNotes.map((note) => {
-                const isEditing = editId === note.id
-                const isDragging = dragId === note.id
-                const isTouchDragging = touchDragId === note.id
-                const dragFollowState =
-                  dragFollower && dragFollower.noteId === note.id ? dragFollower : null
-                const isDragFollowing = Boolean(dragFollowState && dragMovedId === note.id)
-                const swipeHint =
-                  swipePreview.noteId === note.id && !isTouchDragging ? swipePreview : null
-                const showActions = isEditing || !isTouchLayout
-                const showPinButton = !isTouchLayout
-                const isSwipeArmed = Boolean(swipeHint && swipeHint.progress >= 1)
-                const itemStyle = {}
-                if (swipeHint) {
-                  itemStyle['--swipe-progress'] = swipeHint.progress
-                  itemStyle['--swipe-x'] = `${swipeHint.offset}px`
-                  itemStyle['--swipe-reveal'] = `${Math.abs(swipeHint.offset)}px`
-                }
-                if (dragFollowState) {
-                  itemStyle['--drag-dx'] = `${Math.round(dragFollowState.currentX - dragFollowState.startX)}px`
-                  itemStyle['--drag-dy'] = `${Math.round(dragFollowState.currentY - dragFollowState.startY)}px`
-                  itemStyle['--drag-left'] = `${Math.round(dragFollowState.itemLeft)}px`
-                  itemStyle['--drag-top'] = `${Math.round(dragFollowState.itemTop)}px`
-                  itemStyle['--drag-width'] = `${Math.round(dragFollowState.itemWidth)}px`
-                }
-
-              return (
-                <Fragment key={note.id}>
-                  {spacerBeforeId === note.id ? dropSpacer : null}
-                  <li
-                    className={[
-                      'note-item',
-                      note.pinned ? 'note-item--pinned' : '',
-                      isDragging ? 'note-item--dragging' : '',
-                      isTouchDragging ? 'note-item--touch-dragging' : '',
-                      isDragFollowing ? 'note-item--drag-follow' : '',
-                      swipeHint && swipeHint.direction === 'delete'
-                        ? 'note-item--swipe-delete'
-                        : swipeHint && swipeHint.direction === 'pin'
-                          ? 'note-item--swipe-pin'
-                          : swipeHint && swipeHint.direction === 'unpin'
-                            ? 'note-item--swipe-unpin'
-                            : '',
-                      swipeSettleId === note.id && !swipeHint ? 'note-item--swipe-settle' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    data-note-id={note.id}
-                    style={Object.keys(itemStyle).length > 0 ? itemStyle : undefined}
-                    draggable={!isEditing && !isTouchLayout && !note.pinned}
-                    onDragStart={(event) => handleDragStart(note, event)}
-                    onDrag={(event) => handleDrag(note, event)}
-                    onDragEnd={clearDragState}
-                    onTouchStart={(event) => handleTouchStart(note, event)}
-                    onTouchMove={(event) => handleTouchMove(note, event)}
-                    onTouchEnd={(event) => void handleTouchEnd(note, event)}
-                    onContextMenu={handleTouchContextMenu}
-                    onSelectStart={handleNoteSelectStart}
-                    onTouchCancel={() => {
-                      clearDragState()
-                      clearSwipeState()
-                    }}
-                  >
-                    {swipeHint ? (
-                      <div
-                        className={[
-                          'note-swipe-hint',
-                          swipeHint.direction === 'delete'
-                            ? 'note-swipe-hint--delete'
-                            : swipeHint.direction === 'pin'
-                              ? 'note-swipe-hint--pin'
-                              : 'note-swipe-hint--unpin',
-                          isSwipeArmed ? 'is-armed' : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        aria-hidden="true"
-                      >
-                        <span className="note-swipe-hint-icon">
-                          {swipeHint.direction === 'delete' ? (
-                            <TrashIcon size={20} />
-                          ) : swipeHint.direction === 'pin' ? (
-                            <PinIcon size={20} />
-                          ) : (
-                            <PinOffIcon size={20} />
-                          )}
-                        </span>
-                        <span className="note-swipe-hint-label">
-                          {swipeHint.direction === 'delete'
-                            ? '削除'
-                            : swipeHint.direction === 'pin'
-                              ? 'ピン留め'
-                              : '解除'}
-                        </span>
-                      </div>
-                    ) : null}
-                    {isEditing ? (
-                      <textarea
-                        className="note-edit-input"
-                        value={editBody}
-                        onChange={(event) => setEditBody(event.target.value)}
-                        onKeyDown={(event) => handleEditKeyDown(event, note.id)}
-                        autoFocus
-                        rows={2}
-                      />
-                    ) : (
-                      <div className="note-row" onClick={(event) => handleNoteRowClick(note, event)}>
-                        <div className="note-body">{renderNoteBody(note.body, handleCopyText, isTouchLayout)}</div>
-                        {showPinButton ? (
-                          <button
-                            type="button"
-                            className={`pin-icon-btn ${note.pinned ? 'is-active' : ''}`}
-                            onClick={() => handleTogglePin(note)}
-                            aria-label={note.pinned ? 'ピン留め解除' : 'ピン留め'}
-                            title={note.pinned ? 'ピン留め解除' : 'ピン留め'}
-                          >
-                            <PinIcon filled={Boolean(note.pinned)} />
-                          </button>
-                        ) : null}
-                      </div>
+              {pinnedNotes.length > 0 ? (
+                <div className="notes-group">
+                  <h3 className="notes-group-title">
+                    <PinIcon filled size={13} />
+                    ピン留め · {pinnedNotes.length}
+                  </h3>
+                  <ul className="notes-list">
+                    {pinnedNotes.map((note) =>
+                      renderNoteItem(note, spacerBeforeId, spacerAfterId, dropSpacer),
                     )}
-
-                    <div className="note-footer">
-                      {showActions ? (
-                        <div className="actions">
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => void handleUpdate(note.id, editBody)}
-                                disabled={!canSaveEdit}
-                              >
-                                保存
-                              </button>
-                              <button type="button" className="btn-logout" onClick={cancelEdit}>
-                                キャンセル
-                              </button>
-                            </>
-                          ) : null}
-                          {!isTouchLayout ? (
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => handleDelete(note.id)}
-                            >
-                              削除
-                            </button>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                  </li>
-                  {spacerAfterId === note.id ? dropSpacer : null}
-                </Fragment>
-              )
-              })}
-            </ul>
+                  </ul>
+                </div>
+              ) : null}
+              {regularNotes.length > 0 ? (
+                <div className="notes-group">
+                  <h3 className="notes-group-title">メモ · {regularNotes.length}</h3>
+                  <ul className="notes-list">
+                    {regularNotes.map((note) =>
+                      renderNoteItem(note, spacerBeforeId, spacerAfterId, dropSpacer),
+                    )}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
           )}
         </section>
       </>

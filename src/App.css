@@ -1,8 +1,8 @@
 .app-shell {
-  max-width: 900px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 2.25rem 1rem 3rem;
-  color: #1f2933;
+  padding: 0 1.5rem 4rem;
+  color: var(--text);
   transition: color 240ms ease;
 }
 
@@ -23,65 +23,170 @@ a,
 
 .app-shell h1,
 .app-shell h2,
+.app-shell h3,
 .app-shell p {
   margin: 0;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ui-icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
+/* ---------- 読み込み中 ---------- */
+
 .loading-screen {
+  margin-top: 1.5rem;
   min-height: 55vh;
   display: grid;
   place-items: center;
 }
 
 .loading-spinner {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
-  border: 3px solid rgba(37, 99, 235, 0.18);
-  border-top-color: #2563eb;
+  border: 3px solid var(--accent-soft);
+  border-top-color: var(--accent);
   animation: spin 0.82s linear infinite;
 }
+
+/* ---------- カード共通 ---------- */
 
 .setup-card,
 .signin-card,
 .composer,
 .note-item {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 18px;
-  box-shadow: 0 16px 42px -30px rgba(13, 38, 76, 0.65);
-  backdrop-filter: blur(4px);
-  transition: background-color 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition:
+    background-color 240ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.setup-card {
+  margin-top: 1.5rem;
 }
 
 .setup-card,
 .signin-card {
-  padding: 1.4rem;
+  padding: 2rem;
   display: grid;
   gap: 0.75rem;
   animation: rise 320ms ease-out;
 }
 
-.signin-card button {
-  justify-self: start;
+.signin-card {
+  max-width: 420px;
+  margin: 12vh auto 0;
+  justify-items: center;
+  text-align: center;
 }
 
+.signin-card h1 {
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+
+.signin-card p {
+  color: var(--muted);
+}
+
+.signin-card button {
+  margin-top: 0.5rem;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- ヘッダー ---------- */
+
 .app-header {
-  margin-bottom: 0.6rem;
+  /* スクロールしても切り替えボタンをいつでも押せるよう、画面上部に固定する */
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: max(0.9rem, env(safe-area-inset-top)) 0 0.9rem;
   animation: rise 280ms ease-out;
 }
 
-.header-user-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  min-width: 0;
-  width: 100%;
+/* 背景の帯は画面の横幅いっぱいに敷き、下のメモはぼかして透かす */
+.app-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 50vw);
+  right: calc(50% - 50vw);
+  z-index: -1;
+  background: var(--surface);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  border-bottom: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
 }
 
-.header-user-row .btn-logout {
-  font-size: 0.86rem;
-  padding: 0.5rem 0.82rem;
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+
+.app-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 0 6px 14px -8px var(--accent);
+}
+
+.app-logo--large {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  margin-bottom: 0.25rem;
+}
+
+.app-name {
+  font-size: 1.06rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
 .header-user {
@@ -89,16 +194,15 @@ a,
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
-  margin-left: auto;
 }
 
 .header-user p {
-  color: #4b5563;
-  font-size: 0.95rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 12rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 240ms ease;
 }
 
 .header-avatar {
@@ -106,109 +210,69 @@ a,
   height: 2rem;
   border-radius: 999px;
   object-fit: cover;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border);
   flex: 0 0 auto;
-  transition: border-color 240ms ease;
 }
 
 .header-avatar-fallback {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #dbe5f0;
-  color: #374151;
+  background: var(--chip);
+  color: var(--text);
   font-size: 0.85rem;
   font-weight: 700;
-  transition: background-color 240ms ease, color 240ms ease;
 }
 
-.composer {
-  padding: 1rem;
-  display: grid;
-  gap: 0.65rem;
-  margin-bottom: 1.5rem;
-  animation: rise 320ms ease-out;
+.app-header .btn-logout {
+  font-size: 0.86rem;
+  padding: 0.45rem 0.85rem;
 }
 
-.composer label {
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.composer-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.7rem;
+/* 文字の代わりにアイコンを入れても、ボタンの形と高さは文字の時と同じに保つ */
+.app-header .btn-logout--icon {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: calc(0.86rem * 1.6 + 0.9rem + 2px);
+  color: var(--muted);
 }
 
-.composer textarea,
-.note-edit-input {
-  width: 100%;
-  border: 1px solid #d3dde8;
-  border-radius: 12px;
-  padding: 0.72rem 0.8rem;
-  font: inherit;
-  background: #ffffff;
-  transition:
-    border-color 220ms ease,
-    box-shadow 220ms ease,
-    background-color 240ms ease,
-    color 240ms ease;
-}
-
-.composer textarea:focus,
-.note-edit-input:focus {
-  outline: none;
-  border-color: #1d7f91;
-  box-shadow: 0 0 0 3px rgba(29, 127, 145, 0.2);
-}
-
-.composer textarea,
-.note-edit-input {
-  resize: vertical;
-  min-height: 3rem;
-}
+/* ---------- ボタン ---------- */
 
 button {
   border: 1px solid transparent;
   border-radius: 12px;
   padding: 0.6rem 1rem;
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.01em;
   color: #ffffff;
-  background: #2563eb;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition:
     transform 120ms ease,
-    filter 160ms ease,
     opacity 160ms ease,
-    color 240ms ease,
-    background-color 240ms ease,
-    border-color 240ms ease,
-    box-shadow 240ms ease;
+    color 200ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
 }
 
 button:hover:enabled {
-  filter: brightness(1.06);
+  background: var(--accent-hover);
   transform: translateY(-1px);
-  box-shadow:
-    0 6px 16px -8px rgba(15, 23, 42, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-shadow: var(--shadow-md);
 }
 
 button:active:enabled {
-  filter: brightness(0.97);
   transform: translateY(0) scale(0.97);
 }
 
 button:focus-visible,
-a.note-link-icon:focus-visible {
-  outline: 2px solid #60a5fa;
+a:focus-visible {
+  outline: 2px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
@@ -217,74 +281,217 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.btn-login {
-  background: #2563eb;
+.btn-logout,
+.theme-toggle {
+  color: var(--text);
+  background: var(--surface-solid);
+  border-color: var(--border);
 }
 
-.btn-logout {
-  color: #334155;
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(148, 163, 184, 0.45);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-}
-
-.btn-logout:hover:enabled {
-  background: #ffffff;
-  box-shadow: 0 6px 16px -10px rgba(15, 23, 42, 0.35);
-}
-
-.btn-add {
-  background: #059669;
+.btn-logout:hover:enabled,
+.theme-toggle:hover:enabled {
+  background: var(--surface-solid);
+  border-color: var(--border-strong);
 }
 
 .theme-toggle {
-  width: 2.35rem;
-  height: 2.35rem;
-  min-width: 2.35rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
   padding: 0;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.72);
-  color: #374151;
-  border: 1px solid rgba(148, 163, 184, 0.45);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: var(--muted);
 }
 
-.theme-toggle:hover:enabled {
-  background: #ffffff;
-  box-shadow: 0 6px 16px -10px rgba(15, 23, 42, 0.35);
+.danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: transparent;
+  box-shadow: none;
 }
 
-.theme-toggle span {
-  font-size: 1.1rem;
-  line-height: 1;
+.danger:hover:enabled {
+  color: #ffffff;
+  background: var(--danger-solid);
 }
+
+/* ---------- 入力欄 ---------- */
+
+.composer {
+  padding: 0.35rem 0.35rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1.75rem;
+  animation: rise 320ms ease-out;
+}
+
+.composer:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm);
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 0;
+  outline: none;
+  resize: none;
+  padding: 0.75rem 0.9rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.6;
+}
+
+.composer textarea::placeholder,
+.search-field input::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.25rem 0 0.9rem;
+}
+
+.composer-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.composer-hint kbd {
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 6px;
+  background: var(--kbd);
+  border: 1px solid var(--border);
+}
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.5rem;
+  padding: 0 1rem 0 0.75rem;
+}
+
+.btn-add-icon {
+  display: inline-flex;
+}
+
+.btn-add-icon--send {
+  display: none;
+}
+
+/* ---------- メモ一覧 ---------- */
 
 .notes-section {
   display: grid;
-  gap: 0.8rem;
+  gap: 1.1rem;
 }
 
-.notes-title {
+/*
+ * グリッドの列幅を親の幅に固定する。既定の auto のままだと、長い URL など
+ * 折り返せない中身に合わせて列が広がり、検索欄や一覧が入力欄より横にはみ出す。
+ */
+.notes-section,
+.notes-groups,
+.notes-group,
+.notes-list,
+.note-item {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.notes-toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  color: #334155;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.notes-title h2 {
-  font-size: 1.2rem;
+.search-field {
+  flex: 1;
+  min-width: 0;
+  height: 2.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
-.notes-title span {
+.search-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
   font-size: 0.92rem;
 }
 
+.notes-count {
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.empty-state {
+  padding: 0.5rem 0;
+  color: var(--muted);
+}
+
+.notes-groups {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.notes-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.notes-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.notes-group-title .ui-icon {
+  transform: rotate(45deg);
+}
+
 .notes-list {
-  --notes-gap: 1rem;
-  --insert-gap: 72px;
+  --notes-gap: 0.6rem;
   margin: 0;
   padding: 0;
   display: grid;
@@ -292,48 +499,322 @@ button:disabled {
   list-style: none;
 }
 
+/* ---------- メモカード ---------- */
+
 .note-item {
   position: relative;
   overflow: visible;
-  padding: 1rem;
+  padding: 1rem 1rem 0.85rem 2rem;
   display: grid;
-  gap: 0.85rem;
+  gap: 0.75rem;
   touch-action: pan-y;
   animation: rise 260ms ease-out;
-  transition:
-    border-color 220ms ease,
-    box-shadow 220ms ease,
-    background-color 240ms ease,
-    color 240ms ease;
 }
 
 .note-item--pinned {
-  border-color: rgba(59, 130, 246, 0.46);
-  background: rgba(225, 241, 255, 0.98);
-  box-shadow:
-    0 18px 42px -34px rgba(29, 78, 216, 0.24),
-    inset 0 0 0 1px rgba(96, 165, 250, 0.18);
+  background: var(--pinned-bg);
+  border-color: var(--pinned-border);
 }
 
-.note-item--swipe-delete,
-.note-item--swipe-pin,
-.note-item--swipe-unpin {
-  z-index: 3;
-  transform: translate3d(var(--swipe-x, 0px), 0, 0);
-  box-shadow: 0 14px 30px -18px rgba(15, 23, 42, 0.55);
+.note-item--editing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm);
 }
 
-.note-item--swipe-settle {
+@media (hover: hover) and (pointer: fine) {
+  .note-item:not(.note-item--editing):not(.note-item--pinned):hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
+  }
+
+  .note-item--pinned:not(.note-item--editing):hover {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.note-grip {
+  position: absolute;
+  left: 0.45rem;
+  top: 1.05rem;
+  display: flex;
+  color: var(--muted);
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 160ms ease;
+}
+
+.note-item--draggable:hover .note-grip {
+  opacity: 0.85;
+}
+
+.note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.note-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.note-body {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  line-height: 1.6;
+}
+
+.note-row,
+.note-body,
+.note-body * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.note-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.note-line {
+  display: flex;
+  min-width: 0;
+}
+
+.note-line-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.note-line--empty .note-line-content {
+  min-height: 1.6em;
+}
+
+.note-line-placeholder {
+  display: inline-block;
+}
+
+.note-seg {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.note-seg-text {
+  min-width: 0;
+  padding-top: 0.2rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note-seg-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+
+/* URL はドメインを太字にしたリンクチップで表示する */
+.note-seg--url {
+  align-items: center;
+  padding: 0.3rem 0.3rem 0.3rem 0.75rem;
+  border-radius: 12px;
+  background: var(--chip);
+  border: 1px solid var(--border);
+}
+
+.note-url-chip {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+}
+
+.note-url-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.note-url-host {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.note-url-rest {
+  color: var(--muted);
+}
+
+/* 展開表示: URL を省略せず、折り返して最後まで見せる */
+.notes-groups--url-expanded .note-url-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.45;
+  padding-block: 0.2rem;
+}
+
+.notes-groups--url-expanded .note-url-chip {
+  align-items: flex-start;
+}
+
+.notes-groups--url-expanded .note-url-chip > .ui-icon {
+  margin-top: 0.3rem;
+}
+
+/* クリップ・リンク・ピン・削除の丸ボタン（サイズは 2rem の円形で統一） */
+.note-link-icon,
+.note-action-btn {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-size: 1rem;
+  line-height: 1;
+  appearance: none;
+  background: var(--surface-solid);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  cursor: pointer;
   transition:
-    transform 280ms cubic-bezier(0.2, 0.9, 0.25, 1),
-    box-shadow 280ms ease,
-    border-color 220ms ease,
-    background-color 240ms ease,
-    color 240ms ease;
+    transform 120ms ease,
+    opacity 160ms ease,
+    color 200ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
 }
+
+.note-row a.note-link-icon {
+  color: var(--accent-text);
+}
+
+.note-link-icon:hover:enabled,
+.note-row a.note-link-icon:hover,
+.note-action-btn:hover:enabled {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+.note-link-icon:active,
+.note-action-btn:active:enabled {
+  transform: scale(0.94);
+}
+
+.note-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  flex: 0 0 auto;
+}
+
+/* 以前の 📌 と同じく、針が左下を向いた斜めの向きに固定する */
+.pin-icon-btn .ui-icon {
+  transform: rotate(45deg);
+}
+
+.pin-icon-btn.is-active {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 6px 14px -8px var(--accent);
+}
+
+.pin-icon-btn.is-active:hover:enabled {
+  color: #ffffff;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.delete-icon-btn {
+  color: var(--danger);
+}
+
+.delete-icon-btn:hover:enabled {
+  color: #ffffff;
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+}
+
+.note-pinned-badge {
+  display: flex;
+  padding-top: 0.2rem;
+  color: var(--accent-text);
+}
+
+.note-pinned-badge .ui-icon {
+  transform: rotate(45deg);
+}
+
+/* マウス操作の端末では、テキストのコピーボタンはカードにカーソルを乗せた時だけ表示する */
+@media (hover: hover) and (pointer: fine) {
+  .note-seg--text .note-link-icon {
+    opacity: 0;
+  }
+
+  .note-item:hover .note-seg--text .note-link-icon,
+  .note-item:focus-within .note-seg--text .note-link-icon {
+    opacity: 1;
+  }
+}
+
+.note-edit-input {
+  width: 100%;
+  min-height: 4.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  color: var(--text);
+  background: var(--surface-solid);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.note-edit-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ---------- ドラッグで並べ替え ---------- */
 
 .note-item--dragging {
-  opacity: 0.62;
+  opacity: 0.6;
   transform: scale(0.99);
 }
 
@@ -350,11 +831,16 @@ button:disabled {
   width: var(--drag-width, auto);
   box-sizing: border-box;
   margin: 0;
-  transform: translate3d(var(--drag-dx, 0px), var(--drag-dy, 0px), 0) scale(1.01) !important;
+  transform: translate3d(var(--drag-dx, 0px), var(--drag-dy, 0px), 0) rotate(-0.6deg) scale(1.01) !important;
   animation: none;
-  box-shadow:
-    0 24px 46px -34px rgba(15, 23, 42, 0.95),
-    0 10px 22px -14px rgba(15, 23, 42, 0.58);
+  border-color: var(--border-strong);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lift);
+}
+
+.note-item--drag-follow .note-grip {
+  opacity: 1;
+  color: var(--accent-text);
 }
 
 .note-item--touch-dragging {
@@ -363,11 +849,10 @@ button:disabled {
   z-index: 5;
   will-change: transform;
   touch-action: none;
-  border-top-width: 1px;
   transform: translateY(-3px) scale(1.01);
-  box-shadow:
-    0 24px 46px -34px rgba(15, 23, 42, 0.95),
-    0 10px 22px -14px rgba(15, 23, 42, 0.58);
+  border-color: var(--border-strong);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lift);
 }
 
 .note-drop-spacer {
@@ -375,22 +860,28 @@ button:disabled {
   pointer-events: auto;
   box-sizing: border-box;
   height: var(--insert-gap);
-  border: 2px dashed rgba(59, 130, 246, 0.42);
-  border-radius: 18px;
-  background: rgba(59, 130, 246, 0.07);
+  border: 2px dashed var(--accent-ring);
+  border-radius: 16px;
+  background: var(--accent-soft);
   animation: spacer-grow 180ms ease;
 }
 
-.note-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+/* ---------- スマホのスワイプ ---------- */
+
+.note-item--swipe-delete,
+.note-item--swipe-pin,
+.note-item--swipe-unpin {
+  z-index: 3;
+  transform: translate3d(var(--swipe-x, 0px), 0, 0);
+  box-shadow: var(--shadow-md);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .note-row {
-    gap: 2rem;
-  }
+.note-item--swipe-settle {
+  transition:
+    transform 280ms cubic-bezier(0.2, 0.9, 0.25, 1),
+    box-shadow 280ms ease,
+    border-color 200ms ease,
+    background-color 240ms ease;
 }
 
 .note-swipe-hint {
@@ -421,9 +912,9 @@ button:disabled {
 
 .note-swipe-hint--delete {
   left: calc(100% + 8px);
-  --swipe-accent: #dc2626;
-  --swipe-soft: rgba(239, 68, 68, 0.14);
-  --swipe-solid: #ef4444;
+  --swipe-accent: var(--danger);
+  --swipe-soft: var(--danger-soft);
+  --swipe-solid: var(--danger-solid);
 }
 
 .note-swipe-hint--pin,
@@ -432,14 +923,14 @@ button:disabled {
 }
 
 .note-swipe-hint--pin {
-  --swipe-accent: #2563eb;
-  --swipe-soft: rgba(59, 130, 246, 0.14);
-  --swipe-solid: #3b82f6;
+  --swipe-accent: var(--accent-text);
+  --swipe-soft: var(--accent-soft);
+  --swipe-solid: var(--accent);
 }
 
 .note-swipe-hint--unpin {
-  --swipe-accent: #475569;
-  --swipe-soft: rgba(100, 116, 139, 0.16);
+  --swipe-accent: var(--muted);
+  --swipe-soft: var(--chip);
   --swipe-solid: #64748b;
 }
 
@@ -471,260 +962,15 @@ button:disabled {
   transform: none;
 }
 
-.note-body {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
-  line-height: 1.45;
-}
-
-.note-row,
-.note-body,
-.note-body * {
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-
-.note-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.note-line-content {
-  flex: 1;
-  min-width: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.note-touch-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: flex-start;
-  gap: 0.65rem;
-  width: 100%;
-}
-
-.note-touch-item + .note-touch-item {
-  margin-top: 0.38rem;
-}
-
-.note-touch-text {
-  min-width: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.note-touch-actions {
-  display: inline-flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 0.28rem;
-  flex: 0 0 auto;
-  min-width: calc(4rem + 0.28rem);
-}
-
-.note-text-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  max-width: 100%;
-}
-
-.note-text-content {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.note-line--empty .note-line-content {
-  min-height: 1.45em;
-}
-
-.note-line-placeholder {
-  display: inline-block;
-}
-
-.note-row a {
-  color: #1d4ed8;
-  text-decoration: underline;
-  text-underline-offset: 0.12em;
-  transition: color 220ms ease;
-}
-
-.note-row a:hover {
-  color: #1d7f91;
-}
-
-.note-link-icon {
-  margin-left: 0.28rem;
-  width: 2rem;
-  height: 2rem;
-  min-width: 2rem;
-  padding: 0;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  font-size: 1rem;
-  line-height: 1;
-  appearance: none;
-  background: rgba(255, 255, 255, 0.7);
-  color: #475569;
-  border: 1px solid rgba(148, 163, 184, 0.38);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-  text-decoration: none !important;
-  cursor: pointer;
-  transition:
-    transform 120ms ease,
-    filter 160ms ease,
-    color 200ms ease,
-    background-color 200ms ease,
-    border-color 200ms ease,
-    box-shadow 200ms ease;
-}
-
-.note-row a.note-link-icon {
-  color: #475569;
-}
-
-.note-link-icon:hover:enabled,
-.note-row a.note-link-icon:hover {
-  color: #2563eb;
-  background: #eff6ff;
-  border-color: rgba(59, 130, 246, 0.42);
-  box-shadow: 0 6px 14px -8px rgba(37, 99, 235, 0.5);
-  filter: none;
-  transform: translateY(-1px);
-}
-
-.note-link-icon:active,
-.note-row a.note-link-icon:active {
-  transform: scale(0.94);
-}
-
-.ui-icon {
-  display: block;
-  flex: 0 0 auto;
-}
-
-.note-url-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  max-width: 100%;
-  margin-block: 0.18rem;
-}
-
-.note-url-item:not(:last-child) {
-  margin-right: 0.6rem;
-}
-
-.note-line--url + .note-line--url {
-  margin-top: 0.4rem;
-}
-
-.note-url-text {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.note-link-icon--placeholder {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.note-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.pin-icon-btn {
-  margin-left: auto;
-  width: 2rem;
-  height: 2rem;
-  min-width: 2rem;
-  padding: 0;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  background: rgba(255, 255, 255, 0.7);
-  color: #64748b;
-  border: 1px solid rgba(148, 163, 184, 0.38);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-}
-
-.pin-icon-btn .ui-icon {
-  /* 以前の 📌 と同じく、針が左下を向いた斜めの向きに固定する */
-  transform: rotate(45deg);
-}
-
-.pin-icon-btn:hover:enabled {
-  color: #2563eb;
-  background: #eff6ff;
-  border-color: rgba(59, 130, 246, 0.42);
-  box-shadow: 0 6px 14px -8px rgba(37, 99, 235, 0.5);
-  filter: none;
-  transform: translateY(-1px);
-}
-
-.pin-icon-btn.is-active {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 6px 14px -8px rgba(37, 99, 235, 0.65);
-}
-
-.pin-icon-btn.is-active:hover:enabled {
-  color: #ffffff;
-  background: #2563eb;
-  border-color: #2563eb;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-top: 0.7rem;
-}
-
-.danger {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: rgba(239, 68, 68, 0.22);
-  box-shadow: none;
-}
-
-.danger:hover:enabled {
-  color: #ffffff;
-  background: #dc2626;
-  border-color: #dc2626;
-  box-shadow: 0 6px 16px -8px rgba(220, 38, 38, 0.55);
-}
-
-.hint {
-  color: #475569;
-  font-size: 0.9rem;
-  transition: color 240ms ease;
-}
+/* ---------- メッセージ ---------- */
 
 .error {
-  margin-top: 0.75rem;
-  color: #b91c1c;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  color: var(--danger);
+  background: var(--danger-soft);
   font-weight: 600;
-  transition: color 240ms ease;
 }
 
 .copy-toast {
@@ -748,197 +994,13 @@ button:disabled {
   animation: toast-rise 180ms ease-out;
 }
 
-.empty-state {
-  padding: 0;
-  color: #475569;
-  transition: color 240ms ease;
-}
-
-:root[data-theme='dark'] .app-shell {
-  color: #e2e8f0;
-}
-
-:root[data-theme='dark'] .setup-card,
-:root[data-theme='dark'] .signin-card {
-  background: rgba(15, 23, 42, 0.76);
-  border-color: rgba(148, 163, 184, 0.2);
-  box-shadow: 0 20px 48px -34px rgba(2, 6, 23, 0.9);
-}
-
-:root[data-theme='dark'] .composer,
-:root[data-theme='dark'] .note-item {
-  background: rgba(30, 41, 59, 1);
-  border-color: rgba(148, 163, 184, 0.3);
-  box-shadow: 0 20px 48px -34px rgba(2, 6, 23, 0.82);
-}
-
-:root[data-theme='dark'] .note-item--pinned {
-  background: rgba(43, 68, 105, 0.98);
-  border-color: rgba(96, 165, 250, 0.38);
-  box-shadow:
-    0 20px 46px -34px rgba(37, 99, 235, 0.24),
-    inset 0 0 0 1px rgba(96, 165, 250, 0.14);
-}
-
-:root[data-theme='dark'] .theme-toggle,
-:root[data-theme='dark'] .btn-logout {
-  color: #e2e8f0;
-  background: rgba(51, 65, 85, 0.72);
-  border-color: rgba(148, 163, 184, 0.3);
-  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.4);
-}
-
-:root[data-theme='dark'] .theme-toggle:hover:enabled,
-:root[data-theme='dark'] .btn-logout:hover:enabled {
-  background: rgba(71, 85, 105, 0.9);
-  box-shadow: 0 6px 16px -10px rgba(2, 6, 23, 0.9);
-}
-
-:root[data-theme='dark'] .danger {
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(248, 113, 113, 0.28);
-}
-
-:root[data-theme='dark'] .danger:hover:enabled {
-  color: #ffffff;
-  background: #dc2626;
-  border-color: #dc2626;
-}
-
-:root[data-theme='dark'] .note-drop-spacer {
-  border-color: rgba(125, 211, 252, 0.4);
-  background: rgba(125, 211, 252, 0.07);
-}
-
-:root[data-theme='dark'] .note-item--swipe-delete,
-:root[data-theme='dark'] .note-item--swipe-pin,
-:root[data-theme='dark'] .note-item--swipe-unpin {
-  box-shadow: 0 14px 30px -16px rgba(2, 6, 23, 0.95);
-}
-
-:root[data-theme='dark'] .note-swipe-hint--delete {
-  --swipe-accent: #fca5a5;
-  --swipe-soft: rgba(248, 113, 113, 0.16);
-  --swipe-solid: #dc2626;
-}
-
-:root[data-theme='dark'] .note-swipe-hint--pin {
-  --swipe-accent: #93c5fd;
-  --swipe-soft: rgba(96, 165, 250, 0.16);
-  --swipe-solid: #2563eb;
-}
-
-:root[data-theme='dark'] .note-swipe-hint--unpin {
-  --swipe-accent: #cbd5e1;
-  --swipe-soft: rgba(148, 163, 184, 0.16);
-  --swipe-solid: #64748b;
-}
-
-:root[data-theme='dark'] .loading-spinner {
-  border-color: rgba(125, 211, 252, 0.2);
-  border-top-color: #7dd3fc;
-}
-
-:root[data-theme='dark'] .app-header p,
-:root[data-theme='dark'] .notes-title,
-:root[data-theme='dark'] .empty-state,
-:root[data-theme='dark'] .hint {
-  color: #cbd5e1;
-}
-
-:root[data-theme='dark'] .header-avatar {
-  border-color: #475569;
-}
-
-:root[data-theme='dark'] .header-avatar-fallback {
-  background: #334155;
-  color: #e2e8f0;
-}
-
-:root[data-theme='dark'] .notes-title span {
-  color: #94a3b8;
-}
-
-:root[data-theme='dark'] .composer textarea,
-:root[data-theme='dark'] .note-edit-input {
-  color: #e2e8f0;
-  background: rgba(15, 23, 42, 0.88);
-  border-color: #475569;
-}
-
-:root[data-theme='dark'] .composer textarea::placeholder,
-:root[data-theme='dark'] .note-edit-input::placeholder {
-  color: #94a3b8;
-}
-
-:root[data-theme='dark'] .composer textarea:focus,
-:root[data-theme='dark'] .note-edit-input:focus {
-  border-color: #7dd3fc;
-  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.24);
-}
-
-:root[data-theme='dark'] .note-item--touch-dragging {
-  box-shadow:
-    0 26px 48px -30px rgba(2, 6, 23, 0.98),
-    0 12px 24px -12px rgba(15, 23, 42, 0.82);
-}
-
-:root[data-theme='dark'] .note-item--drag-follow {
-  box-shadow:
-    0 26px 48px -30px rgba(2, 6, 23, 0.98),
-    0 12px 24px -12px rgba(15, 23, 42, 0.82);
-}
-
-:root[data-theme='dark'] .note-row a {
-  color: #7dd3fc;
-}
-
-:root[data-theme='dark'] .note-row a:hover {
-  color: #bae6fd;
-}
-
-:root[data-theme='dark'] .note-link-icon,
-:root[data-theme='dark'] .note-row a.note-link-icon,
-:root[data-theme='dark'] .pin-icon-btn {
-  color: #cbd5e1;
-  background: rgba(51, 65, 85, 0.72);
-  border-color: rgba(148, 163, 184, 0.3);
-  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.4);
-}
-
-:root[data-theme='dark'] .note-link-icon:hover:enabled,
-:root[data-theme='dark'] .note-row a.note-link-icon:hover,
-:root[data-theme='dark'] .pin-icon-btn:hover:enabled {
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.18);
-  border-color: rgba(96, 165, 250, 0.45);
-  box-shadow: 0 6px 14px -8px rgba(2, 6, 23, 0.9);
-}
-
-:root[data-theme='dark'] .pin-icon-btn.is-active {
-  color: #ffffff;
-  background: #3b82f6;
-  border-color: #3b82f6;
-  box-shadow: 0 6px 14px -8px rgba(37, 99, 235, 0.7);
-}
-
-:root[data-theme='dark'] .pin-icon-btn.is-active:hover:enabled {
-  color: #ffffff;
-  background: #2563eb;
-  border-color: #2563eb;
-}
-
-:root[data-theme='dark'] .error {
-  padding: 1.4rem;
-  color: #fca5a5;
-}
-
 :root[data-theme='dark'] .copy-toast {
   background: rgba(30, 41, 59, 0.94);
   border: 1px solid rgba(148, 163, 184, 0.35);
   color: #e2e8f0;
 }
+
+/* ---------- アニメーション ---------- */
 
 @keyframes spin {
   to {
@@ -996,140 +1058,158 @@ button:disabled {
   }
 }
 
-@media (max-width: 680px) and (hover: none),
-(max-width: 680px) and (pointer: coarse) {
-  .composer {
-    margin-bottom: 0.75rem;
-  }
-
-  .notes-section {
-    gap: 0.7rem;
-  }
-
-  .notes-list {
-    --notes-gap: 0px;
-    gap: 0;
-  }
-
-}
+/* ---------- スマホ ---------- */
 
 @media (max-width: 680px) and (hover: none),
 (max-width: 680px) and (pointer: coarse) {
   .app-shell {
-    padding: 0.6rem 1rem 3rem;
+    padding: 0 1rem calc(6.5rem + env(safe-area-inset-bottom));
     /* スワイプでカードを横にずらしても横スクロールが出ないようにする */
     overflow-x: clip;
   }
 
   .app-header {
-    display: block;
+    margin-bottom: 0.9rem;
+    padding: max(0.6rem, env(safe-area-inset-top)) 0 0.6rem;
   }
 
-  .header-user-row {
-    justify-content: flex-start;
-    gap: 1rem;
+  .app-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
   }
 
-  .header-user {
-    gap: 0.3rem;
-    min-width: 0;
-    flex: 0 1 auto;
-    margin-left: auto;
+  .header-tools {
+    gap: 0.45rem;
   }
 
   .header-user p {
-    font-size: 0.82rem;
+    display: none;
   }
 
   .header-avatar {
-    width: 1.6rem;
-    height: 1.6rem;
+    width: 1.8rem;
+    height: 1.8rem;
   }
 
-  .header-user-row .btn-logout {
-    font-size: 0.74rem;
-    padding: 0.42rem 0.72rem;
+  .app-header .btn-logout {
+    font-size: 0.76rem;
+    padding: 0.4rem 0.7rem;
   }
 
-  .actions {
-    width: 100%;
+  .app-header .btn-logout--icon {
+    min-height: calc(0.76rem * 1.6 + 0.8rem + 2px);
+  }
+
+  /* 入力欄は画面下に固定して、片手で書きやすくする */
+  .composer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    margin: 0;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom)) 1rem;
+    border-radius: 0;
+    border-width: 1px 0 0;
+    box-shadow: 0 -10px 24px -18px rgba(16, 24, 40, 0.45);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    animation: none;
+  }
+
+  .composer:focus-within {
+    border-color: var(--border);
+    box-shadow: 0 -10px 24px -18px rgba(16, 24, 40, 0.45);
+  }
+
+  .composer textarea {
+    flex: 1;
+    min-height: 2.75rem;
+    max-height: 35vh;
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    background: var(--chip);
+    line-height: 1.5;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  .composer textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .composer-footer {
+    padding: 0;
+  }
+
+  .composer-hint,
+  .btn-add-label,
+  .btn-add-icon--plus {
+    display: none;
+  }
+
+  .btn-add-icon--send {
+    display: inline-flex;
+  }
+
+  .btn-add {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border-radius: 999px;
+    justify-content: center;
+  }
+
+  .notes-section {
+    gap: 0.9rem;
+  }
+
+  .search-field {
+    height: 2.5rem;
+  }
+
+  .notes-groups {
+    gap: 1.1rem;
+  }
+
+  .notes-group {
+    gap: 0.5rem;
+  }
+
+  .notes-list {
+    --notes-gap: 0.5rem;
+  }
+
+  .note-item {
+    padding: 0.85rem 0.9rem 0.75rem 1rem;
+    border-radius: 14px;
+    gap: 0.6rem;
+  }
+
+  .note-drop-spacer,
+  .note-swipe-hint {
+    border-radius: 14px;
+  }
+
+  .note-row {
+    gap: 0.75rem;
+  }
+
+  /* テキストのコピーボタンは右端にそろえ、URL チップ内のボタンと縦の位置を合わせる */
+  .note-seg--text {
+    padding-right: calc(0.3rem + 1px);
+  }
+
+  .note-seg--text .note-seg-text {
+    flex: 1;
   }
 
   .actions button {
     flex: 1;
-  }
-
-  .composer-row {
-    grid-template-columns: 1fr;
-  }
-
-  .composer {
-    margin-bottom: 1.2rem;
-    border-radius: 10px;
-  }
-
-  .note-item {
-    border-radius: 10px;
-  }
-
-  :root[data-theme='dark'] .composer {
-    border-top: 0;
-    border-bottom: 0;
-  }
-
-  .notes-list {
-    --notes-gap: 0.32rem;
-    gap: var(--notes-gap);
-  }
-
-  .note-item {
-    gap: 0;
-    border: 0;
-  }
-
-  .note-item--touch-dragging,
-  .note-item--drag-follow {
-    margin-top: 0;
-    border: 1px solid rgba(148, 163, 184, 0.42);
-  }
-
-  :root[data-theme='light'] .note-item--touch-dragging,
-  :root[data-theme='light'] .note-item--drag-follow {
-    border-color: #c4d0de;
-  }
-
-  .note-row {
-    align-items: center;
-    min-height: 2.35rem;
-  }
-
-  .note-body {
-    min-height: 2.35rem;
-  }
-
-  .note-line {
-    width: 100%;
-  }
-
-  .note-line-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.38rem;
-  }
-
-  .note-touch-item + .note-touch-item {
-    margin-top: 0;
-  }
-
-  .note-line-content .note-touch-item--url + .note-touch-item--url {
-    margin-top: 0.32rem;
-  }
-
-  .note-drop-spacer {
-    border-radius: 10px;
-  }
-
-  .note-swipe-hint {
-    border-radius: 10px;
   }
 }
